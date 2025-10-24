@@ -1,0 +1,707 @@
+@font-face {
+  font-family: Voyage;
+  src: url(../public/11_91233_voyage-regular.ttf);
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+html,body{
+  font-family: gilroy;
+  overflow-x: hidden;
+  height: 100%;width: 100%;
+}
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+}
+html,body{
+  height: 100%;
+  font-family: gilroy;
+  width: 100%;
+
+
+}
+.logo{
+    position: relative;
+    left: 100%;
+
+top: -47%;   
+ transform: translate(-50%,50%);
+}
+
+.search {
+
+    @apply focus:outline-none px-4 py-2  mr-2  relative ;
+    border: 1px solid black;
+    height: 75%;
+    border-radius: 25px;
+    width: 40%;
+    top: 15%;
+    left: 10%;
+    border-radius: 40px;
+}
+.mensec{
+  @apply ml-3 font-bold
+}
+.womensec{
+  @apply font-bold;
+  font-family: gilroy;
+}
+.acc{
+  
+   height: 40%;
+   position: relative;
+   left: 35%;
+   top: 30%;
+}
+
+
+.dropdown {
+ position: absolute;
+ left: 86%;
+ top: 100%;
+ display: flex;
+background-color: #fff;
+ color: black;
+ height: 15vh;
+ border-radius: 15px;
+ box-shadow: 5px 5px 5px 5px rgb(113, 112, 112) ;
+ width: 10vw;
+}
+
+.orderhistory{
+  color: #000;
+  position:absolute;
+  font-family: gilroy;
+  z-index: 9;
+  height: 10vh;
+  width: 15vw;
+  left: -5%;
+  display: list-item;
+}
+.sign{
+  color: #000;
+  position: absolute;
+  z-index: 9;
+  font-family: gilroy;
+
+  position: relative;
+  top: 45%;
+  left: 9%;
+  height: 10vh;
+  width: 15vw;
+  display: inline-flex;
+}
+.log{
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.cart{
+height: 30px;
+position: relative;
+top: 30%;
+left: 40%;
+}
+.main{
+
+    display: flex;
+}
+
+.hello{
+    position: relative;
+    top: 50%;
+    left: 50%;
+    color: black;
+}
+
+.nav{
+    height: 10vh;
+    width: 100vw;
+    z-index: 9;
+    position: fixed;
+    background: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.396);
+    display: flex;
+    top: 0%;
+}
+
+.icon{
+    position: relative;
+left: 2%;
+height: 40%;
+top: 30%;
+cursor: pointer;
+}
+.right{
+    height: 100%;
+    width: 30%;
+    font-size: 2.1vh;
+    text-transform: capitalize;
+    display: flex;
+    position: absolute;
+    
+}
+.rightpart{
+  display: flex;
+  height: 100%;
+  width: 50%;
+}
+.leftpart{
+  display: flex;
+  height: 100%;
+  width: 50%;
+}
+.right p{
+    margin: 20px 10px;
+}
+
+ul { 
+    padding: 0; 
+    list-style: none; 
+    display: table;
+    width: 600px;
+    text-align: center;
+}
+
+li { 
+    display: table-cell; 
+    position: relative; 
+    padding: 15px 0;
+}
+
+a {
+    color: #fff;
+    text-transform: capitalize;
+    text-decoration: none;
+    font-family: manas;
+    font-weight: 100;
+    letter-spacing: 0.15em;
+    display: inline-block;
+    padding: 15px 20px;
+    position: relative;
+}
+
+.mensec:after {    
+    background: none repeat scroll 0 0 transparent;
+    bottom: 0;
+    content: "";
+    display: block;
+    height: 2px;
+    left: 50%;
+    position: absolute;
+    background: #000;
+    transition: width 0.3s ease 0s, left 0.3s ease 0s;
+    width: 0;
+}
+
+.mensec:hover:after { 
+    width: 100%; 
+    left: 0; 
+}
+.womensec:after {    
+  background: none repeat scroll 0 0 transparent;
+  bottom: 0;
+  content: "";
+  display: block;
+  height: 2px;
+  left: 50%;
+  position: absolute;
+  background: #000;
+  transition: width 0.3s ease 0s, left 0.3s ease 0s;
+  width: 0;
+}
+
+.womensec:hover:after { 
+  width: 100%; 
+  left: 0; 
+}
+
+
+
+
+
+
+
+
+.timer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  top: -5%;
+  gap: 10px; /* Adjust spacing between timers as needed */
+}
+
+.timer {
+  width: 80px; /* Adjust the width of the timer */
+  height: 6px; /* Adjust the height of the timer */
+  background-color: rgba(0, 0, 0, 0.167); /* Background color for inactive timers */
+  position: relative;
+  overflow: hidden;
+}
+
+.timer::after {
+  content: '';
+  position: absolute;
+  top: 0%;
+  z-index: 9;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: whitesmoke; /* Color of the progressing timer */
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: progressAnimation linear forwards;
+}
+
+@keyframes progressAnimation {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.timer.active::after {
+  animation-duration: var(--slideshow-duration, 5000ms); /* Default duration is 5000ms if not provided */
+  animation-delay: var(--animation-delay, 0ms);
+  transition-delay: var(--transition-delay, 0ms);
+  animation-play-state: var(--animation-play-state, 'running');
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* Apply animations to respective timers */
+
+  .display{
+    cursor: pointer;
+    align-items: center;
+    width: 100%;
+  height: 100%;
+  }
+  
+  .play{
+    height: 100%;
+    cursor: pointer;
+ justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+
+  .slideshow-container {
+
+    width: 100vw;
+    background-color: #000;
+    height: 80vh;
+  }
+  
+  .slide {
+    position: absolute;
+ 
+      transition: transform 0.5s ;
+    
+  }
+  
+ 
+  
+
+  
+
+.pro
+{
+  height: 650px;
+
+  width: 100vw;
+  top: 92%;
+  position: absolute;
+}
+  .category{
+    height: 5vh;
+    background-color: #000;
+    color: #fff;
+    top: 8%;
+    padding-left: 50px;
+    font-size: 20px;
+    border-radius: 50px;
+
+    position: relative;
+    left: 50%;
+    transform: translate(-50%,50%);
+    width: 10vw;
+  }
+
+  .jeans {
+    height: 750px;
+position: relative;
+
+    width: 100vw;
+  }
+  .products{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22%, 1fr)); /* Each product takes at least 22% width */
+    gap: 40px; /* Adjust the gap as needed for better spacing */
+    margin: 80px;
+    width: 90%; /* Adjust the width as needed */
+    top: 3%;
+    left: 5.5%;
+    border-radius: 10px;
+  } 
+  .product {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .prodname {
+    font-size: 3vh ;
+    position: relative ;
+    left: 5% ;
+  
+  }
+  
+
+.prprice{
+  position: relative;
+  left: 5%;
+  color: red;
+  font-size: 25px;
+  font-weight: 600;
+}
+
+  .show{
+    position: relative;
+    left: 48vw;
+    transform: translate(-50%,-50%);
+    height: 5vh;
+    width: 15vw;
+    background-color: #000;
+    color: #fff;
+margin-bottom: 0px;
+    top: 30%;
+ 
+  }
+
+  .buy {
+    height: 5vh;
+    width: 20vw;
+    bottom: 10px; /* Adjust positioning as needed */
+ 
+    z-index: 999; /* Increase z-index to ensure it's above other elements */
+    opacity: 0;
+    border-radius: 30px;
+    margin: 5px;
+    background-color: blueviolet;
+    color: white;
+    transition: opacity 0.3s ease-in-out; /* Smooth opacity transition */
+  }
+  
+  .product:hover .buy {
+    opacity: 1; /* Show button on product hover */
+  }
+  
+
+
+
+
+  
+.cart-badge{
+  height: 20px;
+  width: 20px;
+  color: black;
+  position: relative;
+  left: 36%;
+  top: 14%;
+  padding-left: 6px;
+  padding-bottom: 1px;
+  border-radius: 20px;
+ 
+ }
+ .ct{
+   position: relative;
+ 
+   border-radius: 50%;
+ 
+   left: 7%;
+   top: -2%;
+ 
+ 
+   height: 50px;
+ z-index: 99999;
+   width: 50px;
+ 
+ 
+   color: black;
+ }
+ .location{
+   display: flex;
+   font-size: 20px;
+    margin: 7px;
+ }
+ .pin{
+   font-size: 20px; 
+   margin-left: 20px;
+   border: none;
+   outline: none;
+ }
+ .check{
+   font-size: 20px;
+   position: relative;
+   left: -10%;
+ }
+ 
+ .inline-container {
+   white-space: nowrap;
+ }
+ 
+ .location-check-container {
+   margin-bottom: 10px; /* Adjust as needed */
+ }
+ 
+ .city, .estd {
+   display: inline;
+   margin: 0;
+   font-size: 15px;
+   padding: 0;
+ }
+ .cartpage {
+
+  height: 100vh;
+
+  width: 30vw;
+
+  position: fixed;
+
+  top: 0;
+
+  right: -30vw; /* Ensure it aligns to the right of the page */
+
+  z-index: 9;
+
+
+  background-color: white;
+
+}
+ .cartpage::-webkit-scrollbar{
+   display: none;
+ }
+ .cart1 {
+   position: relative;
+   cursor: pointer;
+   top: 3%;
+   left: 5%;
+   height: 30px;
+ }
+ 
+ .line {
+   height: 1px;
+   width: 100%; /* Make it take the full width */
+   position: relative;
+   top: 5%;
+   background: #000;
+ }
+ 
+ .cartclose {
+   position: absolute;
+   right: 10px; /* Adjusted for better placement */
+   top: 10px;
+   cursor: pointer;
+ }
+ 
+ .cartimg {
+   height: 10vh;
+   width: 8vw;
+   background-color: blueviolet;
+   margin-top: 60px;
+   margin-left: 5%;
+ }
+ 
+ .details-container {
+   display: flex;
+   flex-direction: row;
+   justify-content: space-between;
+   align-items: center;
+   margin-top: 20px;
+   margin-left: 10px;
+   margin-right: 10px;
+ }
+ 
+ .namecart {
+   display: flex;
+   flex-direction: column;
+   
+ margin-left: 180px;
+ margin-top: -70px;
+   left: 40%;
+   gap: 1px;
+ 
+   font-family: gilroy; 
+   font-size: 20px;
+ }
+ 
+ .quantity {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   height: 30px;
+   width: 100px;
+   border-radius: 10px;
+  margin-left: 12px;
+   padding: 5px;
+   background-color: transparent;
+   border: 1px solid black;
+ }
+ 
+ .btquan {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   gap: 10px;
+   margin-top: 20px;
+ }
+ 
+
+ 
+ .details {
+   display: flex;
+   flex-direction: column;
+   justify-content: space-between;
+   padding: 10px;
+ }
+ 
+ .removeBtn {
+  position: relative;
+ margin-left: 220px;
+
+  margin-top: -42px;
+  background: red;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+/* Prevent body from scrolling */
+body.no-scroll {
+  overflow: hidden;
+}
+
+/* Style for the overlay to cover the rest of the page */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 69.7%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999; /* Make sure it's above other elements */
+}
+.top{
+font-size: 3vw;
+position: relative;
+left: 40vw;
+margin-top: 30px;
+margin-bottom: 30px;
+
+font-weight: 600;
+}
+
+.product {
+  position: relative;
+  overflow: hidden;
+}
+
+.product-image-container {
+  position: relative;
+  width: 100%;
+  padding-top: 133.33%; /* Adjust this value to match your image aspect ratio (4:3 in this example) */
+  overflow: hidden;
+}
+
+.product-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.05s ease-in-out; /* Changed duration to 0.05s */
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.05s ease-in-out; /* Changed duration to 0.05s */
+  pointer-events: none;
+}
+
+.white-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  opacity: 0;
+  transition: opacity 0.03s ease-in-out; /* Changed duration to 0.03s */
+  pointer-events: none;
+}
+
+
+.productHighlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease-in-out;
+}
+.categories{
+  display: flex;
+  position: relative;
+  font-size: 3vh;
+  margin-bottom: 20px;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+}
+.categories p{
+  width: 6vw;
+border-radius:15px;
+transition: background-color 0.3s, color 0.3s;
+cursor: pointer;
+border: 1px solid black;
+padding-left: 20px;
+
+}
+
+
+.categories p.selected {
+  background-color: black;
+  color: white;
+}

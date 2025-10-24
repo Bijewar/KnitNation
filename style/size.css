@@ -1,0 +1,52 @@
+/* size-selection.css */
+@font-face {
+  font-family: Voyage;
+  src: url(../public/11_91233_voyage-regular.ttf);
+}
+html,body{
+  font-family: Voyage;
+}
+.size-selection {
+  text-align: center;
+  position: relative;
+}
+.size{
+  height: 7%;
+
+  width:7%;
+}
+.size-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  background-color: transparent;
+  color: #333;
+  font-size: 18px;
+  margin: 0 10px;
+  cursor: pointer;
+  outline: none;
+}
+
+.size-button:hover {
+  background-color: #f0f0f0;
+}
+
+.size-button.selected {
+  background-color: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.ptag{
+  display: block;
+  font-size: 17px;
+  left: -38%;
+
+  position: relative;
+  
+}
+.sies{
+margin-left: -165px;
+
+}

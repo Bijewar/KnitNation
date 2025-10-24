@@ -1,0 +1,66 @@
+.carousel-container {
+  position: relative;
+  width: 100%;
+top: -5%;
+}
+
+.cbleft  {
+  position: absolute;
+  transform: translateY(-50%);
+top: 20%;
+background-color: blueviolet;
+  height: 45px;
+  width: 45px;
+  color: white;
+  left: 5%;
+  border-radius: 20px;
+  border: none;
+padding-left: 9px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10; /* Ensure buttons are above the slider */
+
+}
+.cbright{
+  position: absolute;
+  transform: translateY(-50%);
+top: 20%;
+  height: 45px;
+  padding-left: 9px;
+
+  width: 45px;
+  background-color: blueviolet;
+
+  color: azure;
+  right: 5%;
+  border-radius: 20px;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10; /* Ensure buttons are above the slider */
+}
+.arr{
+  color: white;
+}
+.carousel-button.right {
+  border-radius: 20px;
+
+  height: 40px;
+  right:  20px;
+  color: white;
+  width: 40px;
+}
+
+.carousel-image {
+  margin-right: 5px; /* Adjust gap between images */
+}
+
+.carousel-image:last-child {
+  margin-right: 0; /* Remove margin from last image to prevent extra space */
+}
+
+.carousel-img {
+  width: calc(100% - 10px); /* Adjust image width to accommodate the gap */
+  height: 60vh;
+  border-radius: 8px; /* Optional: Add rounded corners to images */
+}

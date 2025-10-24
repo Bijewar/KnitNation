@@ -1,0 +1,31 @@
+@font-face {
+    font-family: Voyage;
+    src: url(../public/11_91233_voyage-regular.ttf);
+}
+html,body{
+    font-family: Voyage
+  }
+.img{
+    height: 80vh;
+    width: 40vw;
+        position: absolute;
+        overflow: scroll;
+        background-position: center;
+        top: 15%;
+        left: 30%;
+    
+    }
+    .sizes{
+        height: 160%;
+        width: 130%;
+        left: 0%;
+    position: relative;
+    
+    
+    }
+    .close-button{
+        position: absolute;
+        top: 18%;
+        left: 67%;
+        z-index: 9;
+    }

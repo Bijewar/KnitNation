@@ -1,0 +1,11 @@
+@font-face {
+    font-family: Voyage;
+    src: url(../public/11_91233_voyage-regular.ttf);
+}
+html,body{
+    font-family: Voyage
+  }
+.save{
+    margin: 50px;
+    
+}

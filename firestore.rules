@@ -1,0 +1,18 @@
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow anyone to read and write to any document (WARNING: This is highly permissive and should only be used for testing)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Allow write access to the "mens" collection
+    match /mens/{document} {
+      allow write: if request.auth != null;
+    }
+
+    // Allow write access to the "womens" collection
+    match /womens/{document} {
+      allow write: if request.auth != null;
+    }
+  }
+}
