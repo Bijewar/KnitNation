@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { Label } from "@/app/comp/address/ui/label";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../../../firebase'; // Adjust the import path as needed
 
 import { Input } from "@/app/comp/address/ui/input";
@@ -32,24 +32,24 @@ function Component() {
     country: '',
   });
   const [promoCode, setPromoCode] = useState('');
-  const [isCashfreeLoaded, setIsCashfreeLoaded] = useState(false);
+  const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false);
 
   useEffect(() => {
-    const loadCashfreeSDK = () => {
+    const loadRazorpaySDK = () => {
       const script = document.createElement('script');
-      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
-        if (window.Cashfree) {
-          setIsCashfreeLoaded(true);
+        if (window.Razorpay) {
+          setIsRazorpayLoaded(true);
         } else {
-          console.error('Cashfree SDK loaded but Cashfree object not found');
+          console.error('Razorpay SDK loaded but Razorpay object not found');
         }
       };
       document.body.appendChild(script);
     };
 
-    loadCashfreeSDK();
+    loadRazorpaySDK();
 
     return () => {
       // Cleanup if needed
@@ -82,8 +82,8 @@ function Component() {
   console.log('Address:', address);
   console.log('Promo Code:', promoCode);
 
-  if (!isCashfreeLoaded) {
-    console.error('Cashfree SDK is not loaded yet. Please try again in a moment.');
+  if (!isRazorpayLoaded) {
+    console.error('Razorpay SDK is not loaded yet. Please try again in a moment.');
     return;
   }
 
@@ -122,35 +122,41 @@ function Component() {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create payment session');
+      throw new Error('Failed to create payment order');
     }
 
     const data = await response.json();
 
-    if (data.paymentSessionId) {
-      const cashfree = new window.Cashfree({
-        mode: process.env.NEXT_PUBLIC_CASHFREE_MODE.toLowerCase()
-      });
-
-      cashfree.checkout({
-        paymentSessionId: data.paymentSessionId,
-        returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-result`,
-      }).then(function(result){
-        if(result.error) {
-          console.log("Payment error:", result.error);
-          // Handle payment error (e.g., show error message to user)
-        }
-        if(result.redirect) {
-          console.log("Payment will be redirected:", result.redirect);
-          // Handle redirect if needed
-        }
-        if(result.order && result.order.status === 'PAID') {
-          console.log("Payment completed successfully:", result.order);
+    if (data.orderId) {
+      const options = {
+        key: data.key,
+        amount: data.amount,
+        currency: data.currency,
+        name: 'Knit Nations',
+        description: 'Order Payment',
+        order_id: data.orderId,
+        handler: function (response) {
+          console.log('Payment successful:', response);
           verifyPayment(data.orderId);
-        }
-      });
+          // Save order to Firestore
+          saveOrderToFirestore(data.orderId, cartItems, cartTotal, userDetails);
+          // Redirect to success page or handle success
+          router.push('/order-success');
+        },
+        prefill: {
+          name: userDetails.fullName,
+          email: userDetails.email,
+          contact: userDetails.phoneNumber,
+        },
+        theme: {
+          color: '#000',
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } else {
-      throw new Error('Failed to create payment session');
+      throw new Error('Failed to create payment order');
     }
   } catch (error) {
     console.error('Error initiating payment:', error);
@@ -194,6 +200,26 @@ async function getUserDetails(userId) {
       }
     } catch (error) {
       console.error('Error verifying payment:', error);
+    }
+  };
+
+  // Function to save order to Firestore
+  const saveOrderToFirestore = async (orderId, items, total, userDetails) => {
+    try {
+      const ordersCollection = collection(db, 'orders');
+      await addDoc(ordersCollection, {
+        orderId: orderId,
+        userId: userDetails.userId,
+        items: items,
+        total: total,
+        status: 'Processing',
+        paymentMethod: 'Razorpay',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log('Order saved to Firestore successfully');
+    } catch (error) {
+      console.error('Error saving order to Firestore:', error);
     }
   };
 
@@ -326,8 +352,8 @@ async function getUserDetails(userId) {
       </div>
     </div>
     <div className="mt-8 flex justify-end">
-      <Button onClick={handlePlaceOrder} disabled={!isCashfreeLoaded}>
-        {isCashfreeLoaded ? "Place Order" : "Loading Cashfree..."}
+      <Button onClick={handlePlaceOrder} disabled={!isRazorpayLoaded}>
+        {isRazorpayLoaded ? "Place Order" : "Loading Razorpay..."}
       </Button>
     </div>
   </div>

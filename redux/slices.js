@@ -168,8 +168,7 @@ const cartSlice = createSlice({
 });
 
 
-export const { addToCart, updateQuantity,  setAuthenticated, // Make sure this is exported
-  removeFromCart, clearCart } = cartSlice.actions;
+export const { addToCart, updateQuantity, setAuthenticated, removeFromCart, clearCart } = cartSlice.actions;
 export const cartReducer = cartSlice.reducer;
 
 // UI Slice

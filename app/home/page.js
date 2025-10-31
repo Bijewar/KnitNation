@@ -13,12 +13,11 @@ import { fetchProducts } from "../../stores"
 import "../../style/home.css"
 import { useDispatch, useSelector } from "react-redux"
 import {
-  increaseQuantity,
-  decreaseQuantity,
   fetchProductsStart,
   fetchProductsSuccess,
   fetchProductsFailure,
   removeFromCart,
+  updateQuantity,
 } from "../../redux/slices"
 import withReduxProvider from "../hoc"
 
@@ -95,11 +94,18 @@ const Home = () => {
   }
 
   const handleIncreaseQuantity = (id) => {
-    dispatch(increaseQuantity(id))
+    const item = cartItems.find(item => item.id === id)
+    if (item) {
+      const newQuantity = Math.min(item.quantity + 1, 10)
+      dispatch(updateQuantity({ id, quantity: newQuantity }))
+    }
   }
 
   const handleDecreaseQuantity = (id) => {
-    dispatch(decreaseQuantity(id))
+    const currentItem = cartItems.find(item => item.id === id)
+    if (currentItem && currentItem.quantity > 1) {
+      dispatch(updateQuantity({ id, quantity: currentItem.quantity - 1 }))
+    }
   }
 
   const handleRemoveFromCart = (id) => {

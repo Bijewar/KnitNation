@@ -8,7 +8,6 @@ import { useSelector, useDispatch } from "react-redux"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { load } from "@cashfreepayments/cashfree-js"
 import { db, auth } from "../../firebase"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
 import withReduxProvider from "../hoc"
@@ -52,7 +51,6 @@ const ProductDetails = ({ id }) => {
   const [promoCode, setPromoCode] = useState("")
   const [discount, setDiscount] = useState(0)
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0)
-  const [cashfree, setCashfree] = useState(null)
   const [showAddressForm, setShowAddressForm] = useState(false)
 
   useEffect(() => {
@@ -62,15 +60,7 @@ const ProductDetails = ({ id }) => {
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  useEffect(() => {
-    const initializeSDK = async () => {
-      const cashfreeInstance = await load({
-        mode: "sandbox",
-      })
-      setCashfree(cashfreeInstance)
-    }
-    initializeSDK()
-  }, [])
+
 
   useEffect(() => {
     const auth = getAuth()

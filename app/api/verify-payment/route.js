@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Cashfree } from "cashfree-pg";
+import Razorpay from 'razorpay';
 
-Cashfree.XClientId = process.env.NEXT_PUBLIC_CASHFREE_CLIENT_ID;
-Cashfree.XClientSecret = process.env.CASHFREE_CLIENT_SECRET;
-Cashfree.XEnvironment = Cashfree.Environment.SANDBOX; // Change to PRODUCTION for live environment
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -14,13 +15,13 @@ export async function GET(request) {
   }
 
   try {
-    const response = await Cashfree.PGOrderFetchPayments("2023-08-01", orderId);
-    console.log('Order payments fetched:', response.data);
+    const order = await razorpay.orders.fetch(orderId);
+    console.log('Order fetched:', order);
 
     let orderStatus;
-    if (response.data.filter(transaction => transaction.payment_status === "SUCCESS").length > 0) {
+    if (order.status === 'paid') {
       orderStatus = "Success";
-    } else if (response.data.filter(transaction => transaction.payment_status === "PENDING").length > 0) {
+    } else if (order.status === 'attempted') {
       orderStatus = "Pending";
     } else {
       orderStatus = "Failure";
