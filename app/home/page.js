@@ -44,9 +44,8 @@ const Home = () => {
       if (currentUser) {
         setUser(currentUser)
       } else {
-        if (router.pathname !== "/product-details" && router.pathname !== "/home") {
-          router.replace("/login")
-        }
+        // Allow access to /home without login, but redirect to login for purchases
+        setUser(null)
       }
     })
     return () => unsubscribe()
@@ -184,7 +183,14 @@ const Home = () => {
     return () => clearInterval(interval)
   }, [imageFames.length])
 
-  const handlePayment = () => {}
+  const handlePayment = () => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+    // Proceed with payment logic
+    router.push("/comp/address")
+  }
 
   const handleCategoryClick = (category) => {
     setSelectedCategory(category)
