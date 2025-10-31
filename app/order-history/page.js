@@ -5,7 +5,7 @@ import { auth, db } from "../../firebase"
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore"
 import { motion } from "framer-motion"
 import Link from "next/link"
-import "../../app/globals.css"
+import hoc from '../hoc';
 
 const OrderHistory = () => {
   const [user, setUser] = useState(null)
@@ -237,4 +237,4 @@ const OrderHistory = () => {
   )
 }
 
-export default OrderHistory
+export default hoc(OrderHistory)
