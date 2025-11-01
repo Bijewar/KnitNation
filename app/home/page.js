@@ -9,6 +9,8 @@ import "slick-carousel/slick/slick-theme.css"
 import Link from "next/link"
 import "../../style/slide.css"
 import { auth } from "../../firebase"
+import { Menu, X, Search } from "lucide-react"
+
 import { fetchProducts } from "../../stores"
 import "../../style/home.css"
 import { useDispatch, useSelector } from "react-redux"
@@ -35,7 +37,7 @@ const Home = () => {
   const dispatch = useDispatch()
   const womensProducts = useSelector((state) => state.products.women)
   const cartItems = useSelector((state) => state.cart.items)
-
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const slideshowDuration = 5000
   const imageNames = ["one", "two", "three", "four", "five"]
 
@@ -80,7 +82,10 @@ const Home = () => {
     }
     fetchData()
   }, [dispatch])
-
+  const handleMobileMenuClick = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    setIsAccDropdownOpen(false)
+  }
   let womenJeans = []
   if (womensProducts && typeof womensProducts === "object") {
     womenJeans = womensProducts.Jeans || []
@@ -255,110 +260,176 @@ const Home = () => {
 
   return (
     <>
-      <motion.nav
-        className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-lg backdrop-blur-sm bg-opacity-95"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16 md:h-20">
-            <div className="flex items-center gap-4 sm:gap-6 md:gap-8">
-              <Link
-                href="/"
-                className="text-xs sm:text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
-              >
-                Womens
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
-                href="/men"
-                className="text-xs sm:text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
-              >
-                Mens
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </div>
-
-            <motion.div
-              className="absolute left-1/2 transform -translate-x-1/2"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3 }}
-            >
+  <motion.nav
+      className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-lg backdrop-blur-sm bg-opacity-95"
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 md:h-20">
+          {/* Logo - Centered on mobile, left on desktop */}
+          <motion.div
+            className="flex-1 flex justify-center md:flex-none md:justify-start"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Link href="/" className="inline-flex items-center">
               <img className="h-6 sm:h-8 md:h-10 w-auto" src="/logo.png" alt="Logo" />
-            </motion.div>
+            </Link>
+          </motion.div>
 
-            <div className="flex items-center gap-2 sm:gap-3 md:gap-6">
-              <div className="hidden md:flex items-center bg-neutral-100 rounded-full px-3 sm:px-4 py-2 flex-1 max-w-xs hover:bg-neutral-200 transition-colors duration-300">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="bg-transparent text-xs sm:text-sm text-neutral-900 placeholder-neutral-500 outline-none w-full"
-                />
-                <img className="w-3 h-3 sm:w-4 sm:h-4 text-neutral-400" src="/search-line.png" alt="Search" />
-              </div>
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
+            >
+              Womens
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
+            </Link>
+            <Link
+              href="/men"
+              className="text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
+            >
+              Mens
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
+            </Link>
+          </div>
 
-              <motion.button
-                onClick={handleAccClick}
-                className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors relative flex-shrink-0"
-                aria-label="Account"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/acc.png" alt="Account" />
-              </motion.button>
+          {/* Desktop Search Bar */}
+          <div className="hidden md:flex items-center bg-neutral-100 rounded-full px-4 py-2 hover:bg-neutral-200 transition-colors duration-300 flex-1 max-w-xs">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent text-sm text-neutral-900 placeholder-neutral-500 outline-none w-full"
+            />
+            <Search className="w-4 h-4 text-neutral-400 ml-2 flex-shrink-0" />
+          </div>
 
-              <AnimatePresence>
-                {isAccDropdownOpen && user && (
-                  <motion.div
-                    className="absolute top-12 sm:top-14 md:top-20 right-2 sm:right-4 bg-white border border-neutral-200 rounded-lg shadow-xl overflow-hidden z-40 min-w-max"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-6 flex-1 justify-end">
+            {/* Mobile Search Icon */}
+            <motion.button
+              className="md:hidden p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Search"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+            </motion.button>
+
+            {/* Account Button */}
+            <motion.button
+              onClick={handleAccClick}
+              className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Account"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/acc.png" alt="Account" />
+            </motion.button>
+
+            {/* Account Dropdown */}
+            <AnimatePresence>
+              {isAccDropdownOpen && user && (
+                <motion.div
+                  className="absolute top-14 sm:top-16 md:top-20 right-3 sm:right-4 md:right-6 bg-white border border-neutral-200 rounded-lg shadow-xl overflow-hidden z-40 min-w-max"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Link
+                    href="/order-history"
+                    className="block px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors"
                   >
-                    <Link
-                      href="/order-history"
-                      className="block px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors"
-                    >
-                      Order History
-                    </Link>
-                    <button
-                      onClick={() => auth.signOut()}
-                      className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors border-t border-neutral-200"
-                    >
-                      Logout
-                    </button>
-                  </motion.div>
+                    Order History
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsAccDropdownOpen(false)
+                    }}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors border-t border-neutral-200"
+                  >
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Cart Button */}
+            <motion.button
+              onClick={handleCartClick}
+              className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors relative flex-shrink-0"
+              aria-label="Shopping cart"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/cart.png" alt="Cart" />
+              <AnimatePresence>
+                {cartItems.length > 0 && (
+                  <motion.span
+                    className="absolute -top-1 -right-1 bg-emerald-600 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  >
+                    {cartItems.length > 99 ? "99+" : cartItems.length}
+                  </motion.span>
                 )}
               </AnimatePresence>
+            </motion.button>
 
-              <motion.button
-                onClick={handleCartClick}
-                className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors relative flex-shrink-0"
-                aria-label="Shopping cart"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/cart.png" alt="Cart" />
-                <AnimatePresence>
-                  {cartItems.length > 0 && (
-                    <motion.span
-                      className="absolute top-0 right-0 bg-emerald-600 text-white text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[10px] sm:text-xs"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    >
-                      {cartItems.length}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            </div>
+            {/* Mobile Menu Toggle */}
+            <motion.button
+              onClick={handleMobileMenuClick}
+              className="md:hidden p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Toggle menu"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+              ) : (
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+              )}
+            </motion.button>
           </div>
         </div>
-      </motion.nav>
+
+        {/* Mobile Navigation Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              className="md:hidden border-t border-neutral-200 bg-white"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex flex-col divide-y divide-neutral-100 py-2">
+                <Link
+                  href="/"
+                  className="px-4 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Womens
+                </Link>
+                <Link
+                  href="/men"
+                  className="px-4 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Mens
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.nav>
 
       <main className="bg-gradient-to-b from-neutral-50 to-white min-h-screen">
         {/* Hero Slideshow */}

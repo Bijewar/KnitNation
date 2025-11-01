@@ -6,11 +6,14 @@ import { setAuthenticated } from "../../redux/slices"
 import { useRouter } from "next/navigation"
 import { useSelector, useDispatch } from "react-redux"
 import dynamic from "next/dynamic"
+import {  AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { db, auth } from "../../firebase"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
 import withReduxProvider from "../hoc"
+import { Menu, X, Search } from "lucide-react"
+
 import SizeSelection from "../comp/size"
 import SizeChartModal from "../comp/chart"
 import {
@@ -38,6 +41,8 @@ const ProductDetails = ({ id }) => {
   const [error, setError] = useState(null)
   const [pincode, setPincodeLocal] = useState("")
   const [scrollPosition, setScrollPosition] = useState(0)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
   const [isAccDropdownOpen, setIsAccDropdownOpen] = useState(false)
   const [city, setCityLocal] = useState("")
   const [estimatedDeliveryDate, setEstimatedDeliveryDateLocal] = useState("")
@@ -135,7 +140,10 @@ const ProductDetails = ({ id }) => {
       dispatch(clearSelectedImage())
     }
   }, [dispatch])
-
+  const handleMobileMenuClick = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+    setIsAccDropdownOpen(false)
+  }
   const handleImageClick = (imageUrl) => {
     dispatch(setSelectedImage(imageUrl))
   }
@@ -366,140 +374,177 @@ const ProductDetails = ({ id }) => {
 
   return (
     <>
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: isMobile ? "16px 12px" : "20px 40px",
-          backgroundColor: "#ffffff",
-          borderBottom: "1px solid #f0f0f0",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "12px" : "24px" }}>
-          <img src="/logo.png" alt="logo" style={{ height: isMobile ? "28px" : "32px", objectFit: "contain" }} />
-          {!isMobile && (
-            <ul style={{ display: "flex", gap: "32px", listStyle: "none", margin: 0, padding: 0 }}>
-              <li>
-                <Link href="/" style={{ color: "#000", textDecoration: "none", fontSize: "14px", fontWeight: "500" }}>
-                  Women
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/page/men"
-                  style={{ color: "#000", textDecoration: "none", fontSize: "14px", fontWeight: "500" }}
-                >
-                  Men
-                </Link>
-              </li>
-            </ul>
-          )}
-        </div>
+    <motion.nav
+      className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-lg backdrop-blur-sm bg-opacity-95"
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 md:h-20">
+          {/* Logo - Centered on mobile, left on desktop */}
+          <motion.div
+            className="flex-1 flex justify-center md:flex-none md:justify-start"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Link href="/" className="inline-flex items-center">
+              <img className="h-6 sm:h-8 md:h-10 w-auto" src="/logo.png" alt="Logo" />
+            </Link>
+          </motion.div>
 
-        {!isMobile && (
-          <input
-            type="text"
-            placeholder="Search products..."
-            style={{
-              padding: "10px 16px",
-              border: "1px solid #e0e0e0",
-              borderRadius: "24px",
-              width: "300px",
-              fontSize: "14px",
-              outline: "none",
-              backgroundColor: "#f9f9f9",
-            }}
-          />
-        )}
-
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "12px" : "20px", position: "relative" }}>
-          <img
-            src="/acc.png"
-            alt="account"
-            onClick={handleAccClick}
-            style={{ height: "24px", cursor: "pointer", opacity: 0.7, transition: "opacity 0.2s" }}
-          />
-          {isAccDropdownOpen && user && (
-            <div
-              style={{
-                position: "absolute",
-                top: "40px",
-                right: "60px",
-                backgroundColor: "#fff",
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                zIndex: 1000,
-                minWidth: "160px",
-              }}
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
             >
-              <Link
-                href="/order-history"
-                style={{
-                  display: "block",
-                  padding: "12px 16px",
-                  color: "#000",
-                  textDecoration: "none",
-                  fontSize: "14px",
-                  borderBottom: "1px solid #f0f0f0",
-                }}
-              >
-                Order History
-              </Link>
-              <button
-                onClick={() => auth.signOut()}
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  border: "none",
-                  backgroundColor: "transparent",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  color: "#d32f2f",
-                  textAlign: "left",
-                }}
-              >
-                Logout
-              </button>
-            </div>
-          )}
+              Womens
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
+            </Link>
+            <Link
+              href="/men"
+              className="text-sm font-semibold text-neutral-900 hover:text-emerald-600 transition-all duration-300 relative group"
+            >
+              Mens
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-600 group-hover:w-full transition-all duration-300"></span>
+            </Link>
+          </div>
 
-          <div style={{ position: "relative" }}>
-            <img
-              src="/cart.png"
-              alt="cart"
-              onClick={handleCartClick}
-              style={{ height: "24px", cursor: "pointer", opacity: 0.7, transition: "opacity 0.2s" }}
+          {/* Desktop Search Bar */}
+          <div className="hidden md:flex items-center bg-neutral-100 rounded-full px-4 py-2 hover:bg-neutral-200 transition-colors duration-300 flex-1 max-w-xs">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent text-sm text-neutral-900 placeholder-neutral-500 outline-none w-full"
             />
-            {cartItems.length > 0 && (
-              <span
-                style={{
-                  position: "absolute",
-                  top: "-8px",
-                  right: "-8px",
-                  backgroundColor: "#d32f2f",
-                  color: "#fff",
-                  borderRadius: "50%",
-                  width: "20px",
-                  height: "20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                }}
-              >
-                {cartItems.length}
-              </span>
-            )}
+            <Search className="w-4 h-4 text-neutral-400 ml-2 flex-shrink-0" />
+          </div>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-6 flex-1 justify-end">
+            {/* Mobile Search Icon */}
+            <motion.button
+              className="md:hidden p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Search"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+            </motion.button>
+
+            {/* Account Button */}
+            <motion.button
+              onClick={handleAccClick}
+              className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Account"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/acc.png" alt="Account" />
+            </motion.button>
+
+            {/* Account Dropdown */}
+            <AnimatePresence>
+              {isAccDropdownOpen && user && (
+                <motion.div
+                  className="absolute top-14 sm:top-16 md:top-20 right-3 sm:right-4 md:right-6 bg-white border border-neutral-200 rounded-lg shadow-xl overflow-hidden z-40 min-w-max"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Link
+                    href="/order-history"
+                    className="block px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors"
+                  >
+                    Order History
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setIsAccDropdownOpen(false)
+                    }}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-neutral-900 hover:bg-emerald-50 transition-colors border-t border-neutral-200"
+                  >
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Cart Button */}
+            <motion.button
+              onClick={handleCartClick}
+              className="p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors relative flex-shrink-0"
+              aria-label="Shopping cart"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" src="/cart.png" alt="Cart" />
+              <AnimatePresence>
+                {cartItems.length > 0 && (
+                  <motion.span
+                    className="absolute -top-1 -right-1 bg-emerald-600 text-white text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  >
+                    {cartItems.length > 99 ? "99+" : cartItems.length}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+
+            {/* Mobile Menu Toggle */}
+            <motion.button
+              onClick={handleMobileMenuClick}
+              className="md:hidden p-1.5 sm:p-2 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+              aria-label="Toggle menu"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+              ) : (
+                <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-900" />
+              )}
+            </motion.button>
           </div>
         </div>
-      </nav>
+
+        {/* Mobile Navigation Menu */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              className="md:hidden border-t border-neutral-200 bg-white"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex flex-col divide-y divide-neutral-100 py-2">
+                <Link
+                  href="/"
+                  className="px-4 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Womens
+                </Link>
+                <Link
+                  href="/men"
+                  className="px-4 py-3 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Mens
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.nav>
+      
 
       <main
         style={{

@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { Label } from "@/app/comp/address/ui/label";
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../../firebase'; // Adjust the import path as needed
 
 import { Input } from "@/app/comp/address/ui/input";
@@ -14,9 +14,11 @@ import { Button } from "@/app/comp/address/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/comp/address/ui/card";
 import { Separator } from "@/app/comp/address/ui/separator";
 import hoc from '../../hoc';
+import { clearCart } from '../../../redux/slices';
 
 function Component() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items);
   const [discount, setDiscount] = useState(0); // State to store the discount amount
 
@@ -127,37 +129,34 @@ function Component() {
 
     const data = await response.json();
 
-    if (data.orderId) {
-      const options = {
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        name: 'Knit Nations',
-        description: 'Order Payment',
-        order_id: data.orderId,
-        handler: function (response) {
-          console.log('Payment successful:', response);
-          verifyPayment(data.orderId);
-          // Save order to Firestore
-          saveOrderToFirestore(data.orderId, cartItems, cartTotal, userDetails);
-          // Redirect to success page or handle success
-          router.push('/order-success');
-        },
-        prefill: {
-          name: userDetails.fullName,
-          email: userDetails.email,
-          contact: userDetails.phoneNumber,
-        },
-        theme: {
-          color: '#000',
-        },
-      };
+    const options = {
+      key: data.key,
+      amount: data.amount,
+      currency: data.currency,
+      name: 'Knit Nations',
+      description: 'Order Payment',
+      order_id: data.orderId,
+      prefill: {
+        name: userDetails.fullName,
+        email: userDetails.email,
+        contact: userDetails.phoneNumber,
+      },
+      handler: function (response) {
+        console.log('Payment successful:', response);
+        // Save order to Firestore
+        saveOrderToFirestore(data.orderId, cartTotal, cartItems, address);
+        // Clear the cart
+        dispatch(clearCart());
+        // Redirect to order success page
+        router.push(`/order-success?orderId=${data.orderId}&amount=${data.amount}&currency=${data.currency}`);
+      },
+      theme: {
+        color: '#3399cc',
+      },
+    };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      throw new Error('Failed to create payment order');
-    }
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   } catch (error) {
     console.error('Error initiating payment:', error);
     // Handle the error (e.g., show an error message to the user)
@@ -187,36 +186,26 @@ async function getUserDetails(userId) {
   }
 }
 
-  const verifyPayment = async (orderId) => {
+  const saveOrderToFirestore = async (orderId, total, items, address) => {
     try {
-      const response = await fetch(`/api/verify-payment?orderId=${orderId}`, {
-        method: 'GET',
-      });
-      const data = await response.json();
-      if (data.status === 'SUCCESS') {
-        console.log('Payment successful');
-      } else {
-        console.log('Payment not successful:', data.status);
-      }
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-    }
-  };
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
 
-  // Function to save order to Firestore
-  const saveOrderToFirestore = async (orderId, items, total, userDetails) => {
-    try {
-      const ordersCollection = collection(db, 'orders');
-      await addDoc(ordersCollection, {
-        orderId: orderId,
-        userId: userDetails.userId,
-        items: items,
-        total: total,
-        status: 'Processing',
-        paymentMethod: 'Razorpay',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+      if (!currentUser) {
+        throw new Error('No user is currently logged in.');
+      }
+
+      const orderData = {
+        orderId,
+        userId: currentUser.uid,
+        total,
+        items,
+        address,
+        status: 'Confirmed',
+        date: Timestamp.now(),
+      };
+
+      await addDoc(collection(db, 'orders'), orderData);
       console.log('Order saved to Firestore successfully');
     } catch (error) {
       console.error('Error saving order to Firestore:', error);
