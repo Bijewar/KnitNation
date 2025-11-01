@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 
-let razorpay;
-try {
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-} catch (error) {
-  console.error('Failed to initialize Razorpay:', error);
-}
-
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const orderId = searchParams.get('orderId');
@@ -20,6 +10,11 @@ export async function GET(request) {
   }
 
   try {
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
     const order = await razorpay.orders.fetch(orderId);
     console.log('Order fetched:', order);
 
