@@ -12,7 +12,6 @@ import Link from 'next/link';
 import Slshow from '../pages/comp/slshow'
 import seel from '../style/seel.css'
 import '../style/slide.css'; // Adjust path to your CSS file
-import { auth } from '../firebase';
 import slidecss from '../style/slshow.css';
 import { fetchProducts } from '../stores';
 import '../style/home.css'; // Ensure the correct CSS import

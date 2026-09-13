@@ -1,31 +1,79 @@
-@font-face {
-    font-family: Voyage;
-    src: url(../public/11_91233_voyage-regular.ttf);
+/* ============================================================
+   KnitNation - Size chart modal styles (Myntra-inspired)
+   Pairs with: app/comp/chart.js
+   ============================================================ */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(40, 44, 63, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: chart-fade-in 0.2s ease-out;
 }
-html,body{
-    font-family: Voyage
+
+.modal .img {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: min(92vw, 560px);
+  max-height: 86vh;
+  overflow: auto;
+  position: relative;
+  animation: chart-pop-in 0.22s ease-out;
+}
+
+.modal .sizes {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.modal .close-button {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(40, 44, 63, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.modal .close-button:hover {
+  transform: scale(1.06);
+}
+
+.modal .close-button img {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes chart-fade-in {
+  from {
+    opacity: 0;
   }
-.img{
-    height: 80vh;
-    width: 40vw;
-        position: absolute;
-        overflow: scroll;
-        background-position: center;
-        top: 15%;
-        left: 30%;
-    
-    }
-    .sizes{
-        height: 160%;
-        width: 130%;
-        left: 0%;
-    position: relative;
-    
-    
-    }
-    .close-button{
-        position: absolute;
-        top: 18%;
-        left: 67%;
-        z-index: 9;
-    }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes chart-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

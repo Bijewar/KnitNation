@@ -1,97 +1,122 @@
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, updateDoc, getDocs, Timestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { db, storage } from './firebase'; // Ensure correct import path for Firebase configuration
+import { supabase, isSupabaseConfigured } from './supabase';
 
-// Function to generate a unique ID
-const generateUniqueID = () => {
-  return Math.random().toString(36).substr(2, 9);
+// Helper: Convert data URL to Blob for Supabase Storage
+const dataURLToBlob = (dataURL) => {
+  const parts = dataURL.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+
+  return new Blob([uInt8Array], { type: contentType });
 };
 
-// Function to upload images and get their download URLs
+// Generate unique identifier
+const generateUniqueID = () => {
+  return Math.random().toString(36).substring(2, 11);
+};
+
+// --------------------------------------------------------------------------
+// IMAGE UPLOAD (Supabase Storage: 'product-images' bucket)
+// --------------------------------------------------------------------------
 const uploadImagesAndGetUrls = async (images) => {
   const imageUrls = [];
 
   for (const image of images) {
     const { name, dataURL } = image;
     try {
-      const storageRef = ref(storage, `productImages/${name}-${Date.now()}`);
-      console.log(`Uploading image: ${name}`);
-      await uploadString(storageRef, dataURL, 'data_url');
-      console.log(`Image uploaded successfully: ${name}`);
-      const imageUrl = await getDownloadURL(storageRef);
-      imageUrls.push(imageUrl);
-      console.log(`Image URL for "${name}": ${imageUrl}`);
+      if (!isSupabaseConfigured() || typeof window === 'undefined') {
+        // Fallback: If Supabase not yet configured, store the dataURL directly
+        imageUrls.push(dataURL);
+        continue;
+      }
+
+      const fileExt = name.split('.').pop();
+      const fileName = `${Date.now()}-${generateUniqueID()}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+      const blob = dataURLToBlob(dataURL);
+
+      console.log(`Uploading image ${fileName} to Supabase storage...`);
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, blob, {
+          contentType: blob.type,
+          upsert: true,
+        });
+
+      if (error) {
+        console.warn(`Supabase storage upload warning for "${name}":`, error.message);
+        // Fallback to dataURL if bucket doesn't exist yet
+        imageUrls.push(dataURL);
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        const url = publicUrlData?.publicUrl || dataURL;
+        imageUrls.push(url);
+        console.log(`Image uploaded successfully: ${url}`);
+      }
     } catch (error) {
       console.error(`Error uploading image "${name}":`, error.message);
-      // Handle the error as needed
+      // Fallback so the user's product can still be created
+      if (dataURL) imageUrls.push(dataURL);
     }
   }
 
   return imageUrls;
 };
 
-// Function to add a product to Firestore
-const addProductToFirestore = async (productData, collectionName) => {
+// --------------------------------------------------------------------------
+// ADD SINGLE PRODUCT
+// --------------------------------------------------------------------------
+const addProductToSupabase = async (productData, collectionName) => {
   try {
     const { name, price, description, imageUrls, ownerId, category, subcategory } = productData;
+    const cleanCategory = (category || collectionName || 'women').toLowerCase().replace(/s$/, '');
 
-    console.log(`Adding product to Firestore collection: ${collectionName}`);
-    const docRef = await addDoc(collection(db, collectionName), {
-      name,
-      price,
-      description,
-      imageUrls,
-      category,
-      subcategory,
-      ownerId,
-      createdAt: Timestamp.now(),
-      id: '' // We'll update this after getting the auto-generated ID
-    });
+    console.log(`Adding product "${name}" to Supabase category: ${cleanCategory}`);
 
-    // Update the document with its auto-generated ID
-    await updateDoc(docRef, { id: docRef.id });
+    const { data, error } = await supabase
+      .from('products')
+      .insert([
+        {
+          name,
+          price: parseFloat(price) || 0,
+          description: description || '',
+          image_urls: imageUrls || [],
+          category: cleanCategory,
+          subcategory: subcategory || 'General',
+          owner_id: ownerId || null,
+        },
+      ])
+      .select();
 
-    console.log(`Product "${name}" added to Firestore successfully with ID: ${docRef.id}`);
-    return docRef.id;
+    if (error) {
+      console.error('Supabase product insert error:', error.message);
+      throw error;
+    }
+
+    const insertedId = data?.[0]?.id || generateUniqueID();
+    console.log(`Product "${name}" added to Supabase with ID:`, insertedId);
+    return insertedId;
   } catch (error) {
-    console.error(`Error adding product "${productData.name}" to Firestore:`, error.message);
+    console.error('Error in addProductToSupabase:', error.message);
     throw error;
   }
 };
 
-// Function to update products in Firestore with their IDs
-const updateProductsWithId = async (collectionName) => {
-  try {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    const batch = writeBatch(db);
+// Alias for backwards compatibility
+const addProductToFirestore = addProductToSupabase;
 
-    querySnapshot.forEach(docSnapshot => {
-      const productRef = doc(db, collectionName, docSnapshot.id);
-      batch.update(productRef, { id: docSnapshot.id });
-    });
-
-    await batch.commit();
-    console.log(`Successfully updated products in ${collectionName} with their IDs.`);
-  } catch (error) {
-    console.error(`Error updating products in ${collectionName} with IDs:`, error.message);
-    throw error;
-  }
-};
-
-// Function to update all products in 'mens' and 'womens' collections with IDs
-const updateAllProductsWithIds = async () => {
-  try {
-    await updateProductsWithId('mens');
-    await updateProductsWithId('womens');
-    console.log('All products updated with their IDs.');
-  } catch (error) {
-    console.error('Error updating all products with IDs:', error.message);
-    throw error;
-  }
-};
-
-// Function to read Excel file and parse its data
+// --------------------------------------------------------------------------
+// BULK PRODUCT UPLOAD (Excel XLSX)
+// --------------------------------------------------------------------------
 const readExcelFile = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -113,184 +138,269 @@ const readExcelFile = (file) => {
   });
 };
 
-// Function to handle bulk upload from Excel file
+const addProductsInBulk = async (productsData) => {
+  try {
+    if (!productsData || productsData.length === 0) return 0;
+
+    const rows = productsData.map((p) => {
+      const cat = (p.category || 'women').toLowerCase().replace(/s$/, '');
+      return {
+        name: p.name || 'Unnamed Product',
+        price: parseFloat(p.price) || 0,
+        description: p.description || '',
+        image_urls: p.imageUrls || [],
+        category: cat,
+        subcategory: p.subcategory || 'General',
+        owner_id: p.ownerId || null,
+      };
+    });
+
+    console.log(`Bulk inserting ${rows.length} products to Supabase...`);
+    const { data, error } = await supabase.from('products').insert(rows).select();
+
+    if (error) {
+      console.error('Supabase bulk insert error:', error.message);
+      throw error;
+    }
+
+    console.log(`Successfully added ${data?.length || rows.length} products to Supabase.`);
+    return data?.length || rows.length;
+  } catch (error) {
+    console.error('Error in addProductsInBulk:', error.message);
+    throw error;
+  }
+};
+
 const handleBulkUploadFromExcel = async (file) => {
   try {
     const jsonData = await readExcelFile(file);
-    console.log('Data from Excel file:', jsonData);
-    await addProductsInBulk(jsonData); // Perform bulk upload with the parsed data
-    console.log('Bulk upload completed successfully');
+    console.log('Data parsed from Excel:', jsonData);
+    // Transform rows assuming row 0 is headers if applicable
+    const headers = jsonData[0] || [];
+    const rows = jsonData.slice(1).map((row) => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        obj[String(h).toLowerCase()] = row[i];
+      });
+      return {
+        name: obj.name || row[0],
+        price: obj.price || row[1],
+        description: obj.description || row[2],
+        category: obj.category || row[3],
+        subcategory: obj.subcategory || row[4],
+        imageUrls: obj.imageurls ? String(obj.imageurls).split(',') : [],
+      };
+    });
+
+    return await addProductsInBulk(rows);
   } catch (error) {
     console.error('Error reading Excel file:', error);
-  }
-};
-
-// Function to add products in bulk to Firestore
-const addProductsInBulk = async (productsData) => {
-  try {
-    let successCount = 0;
-
-    for (const productData of productsData) {
-      console.log(`Processing product: ${productData.name}`);
-
-      // Ensure both category and ownerId are present
-      if (!productData.category) {
-        console.error(`Error adding product "${productData.name}": Category not specified`);
-        continue; // Skip products without a category
-      }
-
-      if (!productData.ownerId) {
-        console.warn(`Product "${productData.name}" missing ownerId. Generating a random ID.`);
-        productData.ownerId = generateUniqueID(); // Replace with your ID generation logic
-      }
-
-      // Ensure valid collection name
-      const collectionName = getCategoryCollectionName(productData.category);
-      if (!collectionName) {
-        console.error(`Error: Invalid category "${productData.category}" for product "${productData.name}"`);
-        continue; // Skip products with invalid category
-      }
-
-      // Product data for Firestore
-      const productToFirestore = {
-        name: productData.name,
-        price: productData.price,
-        description: productData.description,
-        imageUrls: productData.imageUrls || [], // Empty array if no imageUrls
-        category: productData.category, // Maintain original category name
-        subcategory: productData.subcategory,
-        ownerId: productData.ownerId,
-        createdAt: Timestamp.now() // Use Firestore Timestamp for createdAt
-      };
-
-      try {
-        console.log(`Adding product "${productData.name}" to collection: ${collectionName}`);
-
-        const addedProductRef = await addDoc(collection(db, collectionName), productToFirestore);
-        successCount++;
-
-        // Image upload after successful product addition
-        if (productData.imageUrls && productData.imageUrls.length > 0) {
-          // Update product document with image URLs
-          await updateDoc(addedProductRef, {
-            imageUrls: productData.imageUrls
-          });
-        }
-      } catch (error) {
-        console.error(`Error adding product "${productData.name}" to Firestore:`, error.message);
-      }
-    }
-
-    console.log(`Successfully added ${successCount} products to Firestore.`);
-    return successCount;
-  } catch (error) {
-    console.error('Error uploading products:', error.message);
     throw error;
   }
 };
 
-// Function to fetch products from both 'mens' and 'womens' collections
+// --------------------------------------------------------------------------
+// FETCH PRODUCTS (Normalized for UI & Redux store)
+// --------------------------------------------------------------------------
+const normalizeProduct = (item) => ({
+  id: String(item.id),
+  name: item.name,
+  price: Number(item.price) || 0,
+  description: item.description || '',
+  imageUrls: Array.isArray(item.image_urls)
+    ? item.image_urls
+    : typeof item.image_urls === 'string'
+    ? JSON.parse(item.image_urls || '[]')
+    : [],
+  category: item.category || 'women',
+  subcategory: item.subcategory || 'General',
+  ownerId: item.owner_id,
+  createdAt: item.created_at || new Date().toISOString(),
+});
+
 const fetchProducts = async () => {
   try {
-    const menProducts = await fetchMenProducts();
-    const womenProducts = await fetchWomenProducts();
-    return { 
-      men: menProducts.map(product => ({ ...product, id: product.id })), 
-      women: womenProducts.map(product => ({ ...product, id: product.id }))
-    };
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase is not configured yet. Returning empty catalog.');
+      return { men: [], women: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching products from Supabase:', error.message);
+      return { men: [], women: [] };
+    }
+
+    const normalized = (data || []).map(normalizeProduct);
+    const men = normalized.filter((p) => p.category.toLowerCase() === 'men');
+    const women = normalized.filter((p) => p.category.toLowerCase() === 'women');
+
+    return { men, women };
   } catch (error) {
-    console.error('Error fetching products:', error);
-    throw error;
+    console.error('Error in fetchProducts:', error);
+    return { men: [], women: [] };
   }
 };
 
-// Function to fetch products from 'mens' collection
 const fetchMenProducts = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, "mens"));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error('Error fetching men products:', error);
-    throw error;
-  }
-};
-const addUserToFirestore = async (userId, email, fullName, phoneNumber) => {
-  try {
-    // Your logic to add user to Firestore
-    console.log(`Adding user to Firestore: ${userId}`);
-    const userDocRef = await addDoc(collection(db, 'users'), {
-      userId,
-      phoneNumber, // Ensure this field is correctly added
-
-      email,
-      fullName,
-      createdAt: Timestamp.now()
-    });
-    console.log(`User "${fullName}" added to Firestore successfully with ID: ${userDocRef.id}`);
-    return userDocRef.id;
-  } catch (error) {
-    console.error('Error adding user to Firestore:', error.message);
-    throw error;
-  }
+  const { men } = await fetchProducts();
+  return men;
 };
 
-// Function to fetch products from 'womens' collection
 const fetchWomenProducts = async () => {
+  const { women } = await fetchProducts();
+  return women;
+};
+
+const fetchProductById = async (id) => {
   try {
-    const querySnapshot = await getDocs(collection(db, "womens"));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (!id || !isSupabaseConfigured()) return null;
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching product by ID from Supabase:', error?.message);
+      return null;
+    }
+
+    return normalizeProduct(data);
   } catch (error) {
-    console.error('Error fetching women products:', error);
+    console.error('Error in fetchProductById:', error);
+    return null;
+  }
+};
+
+// --------------------------------------------------------------------------
+// DATABASE CLEAR / RESET
+// --------------------------------------------------------------------------
+const clearAllProducts = async () => {
+  try {
+    console.log('Clearing all products from Supabase...');
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .neq('name', '___NON_EXISTENT_FILTER___');
+
+    if (error) {
+      console.error('Error clearing products in Supabase:', error.message);
+      throw error;
+    }
+
+    console.log('All products cleared successfully from Supabase.');
+    return true;
+  } catch (error) {
+    console.error('Error in clearAllProducts:', error.message);
     throw error;
   }
 };
 
-// Function to get Firestore collection name based on category
-const getCategoryCollectionName = (category) => {
-  const collectionNames = {
-    men: 'mens',
-    women: 'womens',
-    // Add more mappings as needed
-  };
-
-  return collectionNames[category.toLowerCase()] || null;
-};
-export const checkUserExists = async (email, phoneNumber) => {
-  const db = getFirestore();
-  const usersRef = collection(db, 'users');
-  
-  const emailQuery = query(usersRef, where('email', '==', email));
-  const phoneQuery = query(usersRef, where('phoneNumber', '==', phoneNumber));
-  
-  const [emailSnapshot, phoneSnapshot] = await Promise.all([
-    getDocs(emailQuery),
-    getDocs(phoneQuery)
-  ]);
-  
-  return !emailSnapshot.empty || !phoneSnapshot.empty;
-};
-const fetchUsers = async () => {
+// --------------------------------------------------------------------------
+// ORDERS & USER CARTS
+// --------------------------------------------------------------------------
+const saveOrderToSupabase = async (orderData) => {
   try {
-    const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data() // This should include phoneNumber if it's in the document
+    const { data, error } = await supabase
+      .from('orders')
+      .insert([
+        {
+          order_id: orderData.orderId,
+          user_id: orderData.userId,
+          total: orderData.total,
+          items: orderData.items,
+          address: orderData.address,
+          status: orderData.status || 'Confirmed',
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error saving order to Supabase:', error.message);
+    throw error;
+  }
+};
+
+const fetchOrdersForUser = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((o) => ({
+      id: o.id,
+      orderId: o.order_id,
+      total: o.total,
+      items: o.items,
+      address: o.address,
+      status: o.status,
+      date: o.created_at,
     }));
   } catch (error) {
-    console.error('Error fetching users:', error.message);
-    throw error;
+    console.error('Error fetching orders:', error.message);
+    return [];
   }
 };
 
-// Export functions for use in other modules
+const saveUserCart = async (userId, items) => {
+  try {
+    const { error } = await supabase
+      .from('user_carts')
+      .upsert({ user_id: userId, items, updated_at: new Date().toISOString() });
+    if (error) console.error('Error saving cart to Supabase:', error.message);
+  } catch (error) {
+    console.error('Error in saveUserCart:', error);
+  }
+};
+
+const fetchUserCart = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_carts')
+      .select('items')
+      .eq('user_id', userId)
+      .single();
+    if (error) return [];
+    return data?.items || [];
+  } catch (error) {
+    return [];
+  }
+};
+
+// Backwards compatibility stubs for unused functions
+const updateProductsWithId = async () => {};
+const updateAllProductsWithIds = async () => {};
+const fetchUsers = async () => [];
+const addUserToFirestore = async () => {};
+
 export {
+  addProductToSupabase,
   addProductToFirestore,
-  updateProductsWithId,
-  fetchUsers,
-  addUserToFirestore,
-  updateAllProductsWithIds,
   addProductsInBulk,
   handleBulkUploadFromExcel,
   uploadImagesAndGetUrls,
-  fetchProducts
+  fetchProducts,
+  fetchMenProducts,
+  fetchWomenProducts,
+  fetchProductById,
+  clearAllProducts,
+  saveOrderToSupabase,
+  fetchOrdersForUser,
+  saveUserCart,
+  fetchUserCart,
+  updateProductsWithId,
+  updateAllProductsWithIds,
+  fetchUsers,
+  addUserToFirestore,
 };

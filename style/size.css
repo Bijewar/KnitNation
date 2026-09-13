@@ -1,52 +1,43 @@
-/* size-selection.css */
-@font-face {
-  font-family: Voyage;
-  src: url(../public/11_91233_voyage-regular.ttf);
-}
-html,body{
-  font-family: Voyage;
-}
-.size-selection {
-  text-align: center;
-  position: relative;
-}
-.size{
-  height: 7%;
+/* ============================================================
+   KnitNation - Size selection styles (Myntra chip grid)
+   Pairs with: app/comp/size.js
+   (base classes live in style/product.css)
+   ============================================================ */
 
-  width:7%;
+.size-selection .ptag {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #282c3f;
+  margin-bottom: 2px;
 }
+
+.sies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .size-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid #ccc;
-  background-color: transparent;
-  color: #333;
-  font-size: 18px;
-  margin: 0 10px;
+  min-width: 46px;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid #d4d5d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #282c3f;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .size-button:hover {
-  background-color: #f0f0f0;
+  border-color: #282c3f;
 }
 
 .size-button.selected {
-  background-color: #007bff;
-  color: #fff;
-  border-color: #007bff;
-}
-
-.ptag{
-  display: block;
-  font-size: 17px;
-  left: -38%;
-
-  position: relative;
-  
-}
-.sies{
-margin-left: -165px;
-
+  border: 1.5px solid #282c3f;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px #282c3f;
 }

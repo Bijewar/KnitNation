@@ -7,14 +7,46 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        /* Myntra-inspired palette */
+        myntra: {
+          pink: "#ff3f6c",
+          "pink-dark": "#e6345e",
+          "pink-light": "#fff0f4",
+          orange: "#ff905a",
+          "orange-text": "#f26b23",
+          green: "#03a685",
+          "rating-green": "#1a9c3e",
+          ink: "#282c3f",
+          "ink-secondary": "#5a5d68",
+          "ink-muted": "#94969f",
+          border: "#eaeaec",
+          bg: "#f5f5f6",
+        },
+      },
+      fontFamily: {
+        body: [
+          "Whitney",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+      },
+      maxWidth: {
+        "8xl": "90rem",
+      },
+      boxShadow: {
+        card: "0 4px 12px 0 rgba(40, 44, 63, 0.08)",
+        "card-hover": "0 6px 20px 0 rgba(40, 44, 63, 0.14)",
+      },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
-      fontFamily: {
-        body: ['Your-Body-Font', 'sans-serif'], // Replace with your desired body font
-        heading: ['Your-Heading-Font', 'serif'], // Replace with your desired heading font
       },
       colors: {
         "border": "hsl(var(--border))",

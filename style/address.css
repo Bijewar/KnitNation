@@ -1,42 +1,41 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================================
+   KnitNation - Address / checkout page styles (Myntra-inspired)
+   Pairs with: app/comp/address/page.js
+   NOTE: Tailwind base + design tokens now load once from
+   app/globals.css - do NOT duplicate @tailwind directives here
+   (the previous copy shipped a second Tailwind layer and an
+   invalid font-heading class that broke the CSS build).
+   ============================================================ */
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 45%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-  }
+.address-card {
+  border: 1px solid #eaeaec;
+  border-radius: 8px;
+  background: #fff;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  
-  body {
-    @apply bg-background text-foreground font-body;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
-  }
+.address-card-selected {
+  border-color: #ff3f6c;
+  box-shadow: 0 0 0 1px #ff3f6c;
+}
+
+.address-section-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #282c3f;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.address-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #5a5d68;
+  padding: 6px 0;
+}
+
+.address-summary-total {
+  font-weight: 700;
+  color: #282c3f;
+  font-size: 1rem;
 }

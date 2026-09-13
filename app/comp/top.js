@@ -54,7 +54,6 @@ const TopCategories = () => {
   const nextSlide = () => {
     sliderRef.current.slickNext();
   };
-
   const prevSlide = () => {
     sliderRef.current.slickPrev();
   };
@@ -74,8 +73,10 @@ const TopCategories = () => {
 
   return (
     <div className="carousel-container">
-      <button className="carousel-button left" onClick={prevSlide}>
-        ◀
+      <button className="carousel-button left" onClick={prevSlide} aria-label="Previous categories">
+        <svg width="8" height="12" viewBox="0 0 8 12" fill="none">
+          <path d="M7 1L1.5 6L7 11" stroke="#282c3f" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
       </button>
       <Slider ref={sliderRef} {...settings}>
         {images.map((image, index) => (
@@ -85,12 +86,19 @@ const TopCategories = () => {
             onClick={() => handleSlideClick(index)}
             style={{ cursor: 'pointer' }}
           >
-            <img src={image} alt={`Slide ${index}`} className="carousel-photo" />
+            <div className="carousel-tile">
+              <img src={image} alt={`Category ${index + 1}`} className="carousel-photo" />
+              <div className="carousel-tile-overlay">
+                <span>Shop Now</span>
+              </div>
+            </div>
           </div>
         ))}
       </Slider>
-      <button className="carousel-button right" onClick={nextSlide}>
-        ▶
+      <button className="carousel-button right" onClick={nextSlide} aria-label="Next categories">
+        <svg width="8" height="12" viewBox="0 0 8 12" fill="none">
+          <path d="M1 1L6.5 6L1 11" stroke="#282c3f" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
       </button>
     </div>
   );

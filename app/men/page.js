@@ -1,17 +1,17 @@
 "use client"
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// pages/page/men.js
 import { fetchProducts } from '../../stores';
 
-// Your code using fetchProducts
-
 import { useDispatch, useSelector } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { fetchProductsStart, fetchProductsSuccess, fetchProductsFailure } from '../../redux/slices';
-import css from "../../style/home.css";
+import Header from '../comp/Header';
+import ListingView from '../comp/ListingView';
+import Footer from '../comp/Footer';
+import BottomNav from '../comp/BottomNav';
 import withReduxProvider from '../hoc';
+import { onAuthStateChange } from '../../supabase';
 
 // Define numberToWord function to generate image names for the slideshow
 const numberToWord = (number) => {
@@ -30,12 +30,26 @@ const Men = () => {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  // Update selector to access state.products.men.jeans efficiently
-  const mensProducts = useSelector(state => state.products.men.jeans);
+  // Read the men products the same way the women pages do (lower OR
+  // capitalized subcategory key). The original selector read only the
+  // lowercase key while the reducer groups by the stored value ("Jeans"),
+  // so the men listing always showed 0 items (see change report).
+  const menState = useSelector(state => state.products.men);
+  const mensProducts = menState ? (menState.jeans || menState.Jeans) : null;
   const isLoading = useSelector(state => state.products.loading);
   const error = useSelector(state => state.products.error);
 
   const slideshowDuration = 5000; // milliseconds
+
+  // Track auth state for the header (same display-only pattern as the home page)
+  useEffect(() => {
+    const subscription = onAuthStateChange((currentUser) => {
+      setUser(currentUser);
+    });
+    return () => {
+      if (subscription?.unsubscribe) subscription.unsubscribe();
+    };
+  }, []);
 
   // Fetch products on component mount using useEffect hook
   useEffect(() => {
@@ -49,10 +63,11 @@ const Men = () => {
         // Filter out createdAt before dispatching (if needed)
         const filteredProductsData = {
           category: 'men',
-          data: productsData.men.map(product => ({
+          data: (productsData.men || []).map(product => ({
             ...product,
-            // Remove createdAt or convert to string if needed
-            // createdAt: product.createdAt?.toString()
+            createdAt: typeof product.createdAt?.toDate === 'function'
+              ? product.createdAt.toDate().toISOString()
+              : new Date(product.createdAt || Date.now()).toISOString(),
           }))
         };
 
@@ -76,82 +91,45 @@ const Men = () => {
     setDisplayedProducts(prevCount => prevCount + 4); // Increase the displayed products count by 4
   };
 
-  return (
-    <>
-      <div className='nav'>
-        <ul className='right'>
-          <li>
-            <Link href="/" className='ml-3 font-bold' style={{ color: 'black' }}>
-              Womens
-            </Link>
-          </li>
-          <li>
-            <Link href="/page/men" className='font-gilroy font-bold' style={{ color: 'black' }}>
-              Mens
-            </Link>
-          </li>
-        </ul>
-        <img className='logo' src="/logo.png" alt="logo" />
-        <input
-          type="text"
-          placeholder="What are you looking for?"
-          className="search"
-        />
-        <img className='icon' src="/search-line.png" alt="" />
-        <img className='acc' src="/acc.png" alt="" />
-        <img className='cart' src="/cart.png" alt="" />
-      </div>
+  // Navigate to the product detail page - same routing behavior as the
+  // other listing pages (the original men page Buy Now buttons were not wired)
+  const handleBuyNow = (product) => {
+    if (product && product.id) {
+      router.push(`/product/${product.id}`);
+    } else {
+      console.error('Invalid product data:', product);
+    }
+  };
 
-      <div className='main'>
-        <div className="slideshow-container">
-          <AnimatePresence>
-            <motion.div
-              key={activeSlide}
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: '0' }}
-              exit={{ opacity: 0, x: '-100%' }}
-              transition={{ duration: 0.5 }}
-              className="slide" // Added class name
-            >
-              <img className='display' src={`/${numberToWord(activeSlide + 1)}.webp`} alt="" />
-              <div className="timer-container">
-                {[...Array(5)].map((_, index) => (
-                  <div
-                    key={index}
-                    className={`timer timer${index + 1} ${index === activeSlide ? 'active' : ''}`}
-                    style={{ animationDelay: `${index === activeSlide ? 0 : slideshowDuration}ms` }}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        <p className='category'> Jeans</p>
-        <div className='jeans'>
-          <div className='products'>
-            {menJeans.slice(0, displayedProducts).map((product, index) => (
-              <div
-                key={index}
-                className='product'
-              >
-                {product.imageUrls && product.imageUrls.length > 0 ? (
-                  <img className='rounded-xl' src={product.imageUrls[0]} alt={product.name} />
-                ) : (
-                  <img className='rounded-xl' src="/fallback-image.jpg" alt="Fallback Image" />
-                )}
-                <button className='buy'>Buy Now</button>
-                <div>
-                  <span><p>₹ {product.price}</p></span>
-                </div>
-              </div>
-            ))}
-            {displayedProducts < menJeans.length && (
-              <button className='show' onClick={handleShowMore}>Show More</button>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
+  const handleAccClick = () => {
+    if (user) {
+      // Header manages its own account dropdown panel
+    } else {
+      router.push('/login');
+    }
+  };
+
+  // The bag drawer lives on the home page - route there to open it
+  const handleCartClick = () => {
+    router.push('/home');
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <Header user={user} onAccountClick={handleAccClick} onCartClick={handleCartClick} />
+
+      <main className="flex-1 pb-16 md:pb-0">
+        <ListingView
+          products={menJeans}
+          onBuyNow={handleBuyNow}
+          title="Men's Jeans"
+          loading={isLoading && !mensProducts}
+        />
+      </main>
+
+      <Footer />
+      <BottomNav onBagClick={handleCartClick} />
+    </div>
   );
 };
 

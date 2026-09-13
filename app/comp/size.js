@@ -12,7 +12,8 @@ const SizeSelection = () => {
 
   return (
     <div className="size-selection">
-      <p className='ptag'>Select Size</p>
+      {/* Label row ("Select Size" + "View Size Chart") is provided by the
+          parent ProductDetails layout; only the chip grid renders here. */}
       <div className="sies">
         <button 
           className={`size-button ${selectedSize === '28' ? 'selected' : ''}`}

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { otpStore } from "../sendOtp/route";
 
-export async function PUT(request) {
+global._otpStore = global._otpStore || new Map();
+const otpStore = global._otpStore;
+
+async function handleVerify(request) {
   try {
     const { email, otp } = await request.json();
 
@@ -66,3 +68,6 @@ export async function PUT(request) {
     );
   }
 }
+
+export const PUT = handleVerify;
+export const POST = handleVerify;

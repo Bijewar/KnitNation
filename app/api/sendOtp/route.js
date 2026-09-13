@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
-// 🧠 Temporary store for OTPs (only for dev)
-// Replace with Redis or Firestore for production
-export const otpStore = new Map();
+// Global store for OTPs so it persists across Next.js route handlers
+global._otpStore = global._otpStore || new Map();
+export const otpStore = global._otpStore;
 
 // ✅ Generate a random 4-digit OTP
 const generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -27,18 +27,22 @@ export async function POST(request) {
       attempts: 0,
     });
 
+    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const smtpPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS)?.trim();
+    const emailFrom = process.env.EMAIL_FROM || smtpUser;
+
     // ✅ Setup Gmail transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS?.trim(),
+        user: smtpUser,
+        pass: smtpPass,
       },
     });
 
     // ✅ Send email
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: emailFrom,
       to: email,
       subject: "Your 4-digit OTP Code",
       html: `

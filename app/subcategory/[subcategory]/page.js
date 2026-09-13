@@ -1,25 +1,26 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProductsStart, fetchProductsSuccess, fetchProductsFailure } from '../../../redux/slices';
 import { fetchProducts } from '../../../stores';
-import { onAuthStateChange } from '../../../supabase';
+import { fetchProductsStart, fetchProductsSuccess, fetchProductsFailure } from '../../../redux/slices';
 import Header from '../../comp/Header';
 import ListingView from '../../comp/ListingView';
 import Footer from '../../comp/Footer';
 import BottomNav from '../../comp/BottomNav';
+import withReduxProvider from '../../hoc';
+import { onAuthStateChange } from '../../../supabase';
 
-const CollectionPage = () => {
-  const params = useParams();
-  const category = params.category;
-  const dispatch = useDispatch();
+const SubcategoryPage = () => {
   const router = useRouter();
-  const womensProducts = useSelector(state => state.products.women);
-  const [loading, setLoading] = useState(true);
+  const { subcategory } = useParams();
+  const dispatch = useDispatch();
   const [user, setUser] = useState(null);
-  const productRefs = useRef([]);
+  const womensProducts = useSelector((state) => state.products.women);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Track auth state for the header (same display-only pattern as the home page)
   useEffect(() => {
@@ -34,10 +35,8 @@ const CollectionPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching products...');
         dispatch(fetchProductsStart());
         const productsData = await fetchProducts();
-        console.log('Fetched products:', productsData);
         const filteredProductsData = {
           category: 'women',
           data: (productsData.women || []).map((product) => ({
@@ -48,37 +47,32 @@ const CollectionPage = () => {
           })),
         };
         dispatch(fetchProductsSuccess(filteredProductsData));
-        setLoading(false);
       } catch (error) {
         dispatch(fetchProductsFailure(error.message));
         console.error('Error fetching products:', error);
+      } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [dispatch]);
 
-  const getFilteredProducts = () => {
-    console.log('Women\'s Products from Redux:', womensProducts);
-    if (!womensProducts) return [];
-
-    const subcategoryLower = category.toLowerCase();
-    const subcategoryCapitalized = category.charAt(0).toUpperCase() + category.slice(1);
-
-    const filteredProducts = womensProducts[subcategoryLower] || womensProducts[subcategoryCapitalized] || [];
-
-    console.log('Filtered Products for', category, filteredProducts);
-    return filteredProducts;
-  };
-
-  const filteredProducts = getFilteredProducts();
-
   useEffect(() => {
-    productRefs.current = productRefs.current.slice(0, filteredProducts.length);
-  }, [filteredProducts]);
+    if (womensProducts) {
+      const subcategoryLower = subcategory.toLowerCase();
+      const subcategoryCapitalized =
+        subcategory.charAt(0).toUpperCase() + subcategory.slice(1);
+      const filtered =
+        womensProducts[subcategoryLower] ||
+        womensProducts[subcategoryCapitalized] ||
+        [];
+      setFilteredProducts(filtered);
+    }
+  }, [womensProducts, subcategory]);
 
   const handleBuyNow = (product) => {
-    console.log('Buy Now clicked for product:', product);
+    console.log('Product to buy:', product);
     if (product && product.id) {
       router.push(`/product/${product.id}`);
     } else {
@@ -99,6 +93,10 @@ const CollectionPage = () => {
     router.push('/home');
   };
 
+  const displayTitle = subcategory
+    ? subcategory.charAt(0).toUpperCase() + subcategory.slice(1)
+    : 'Products';
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Header user={user} onAccountClick={handleAccClick} onCartClick={handleCartClick} />
@@ -107,8 +105,8 @@ const CollectionPage = () => {
         <ListingView
           products={filteredProducts}
           onBuyNow={handleBuyNow}
-          title={`${category.charAt(0).toUpperCase() + category.slice(1)} Collection`}
-          loading={loading}
+          title={displayTitle}
+          loading={loading && !womensProducts}
         />
       </main>
 
@@ -118,4 +116,4 @@ const CollectionPage = () => {
   );
 };
 
-export default CollectionPage;
+export default withReduxProvider(SubcategoryPage);

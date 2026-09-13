@@ -1,10 +1,8 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Toaster, toast } from "react-hot-toast"
-import dynamic from "next/dynamic"
 import { useDispatch } from "react-redux"
-import Layout from "../layout"
 import { setUser } from "../../redux/slices"
 import { BsFillShieldLockFill } from "react-icons/bs"
 import Link from "next/link"
@@ -12,7 +10,69 @@ import { CgSpinner } from "react-icons/cg"
 import withReduxProvider from "../hoc"
 import PhoneInput from "react-phone-number-input"
 import "react-phone-number-input/style.css"
-const OtpInput = dynamic(() => import("otp-input-react"), { ssr: false })
+import { ShoppingBag, Heart, Zap, Mail, ArrowLeft, CheckCircle2 } from "lucide-react"
+import "../../style/login.css"
+import "../../style/register.css"
+import { signUp } from "../../supabase"
+
+// Robust 4-digit segmented OTP Box component with native inputs
+const SegmentedOtpInput = ({ value = "", onChange, placeholder = "•" }) => {
+  const inputsRef = useRef([])
+
+  const handleDigitChange = (index, val) => {
+    const clean = val.replace(/\D/g, "")
+    if (!clean) {
+      const arr = (value || "").split("")
+      arr[index] = ""
+      onChange(arr.join("").trim())
+      return
+    }
+    const lastChar = clean[clean.length - 1]
+    const arr = (value || "").padEnd(4, " ").split("")
+    arr[index] = lastChar
+    const updated = arr.join("").trim()
+    onChange(updated)
+    if (index < 3 && lastChar) {
+      inputsRef.current[index + 1]?.focus()
+    }
+  }
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && (!value[index] || value[index] === " ") && index > 0) {
+      inputsRef.current[index - 1]?.focus()
+    }
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4)
+    if (pasted) {
+      onChange(pasted)
+      const nextIdx = Math.min(pasted.length, 3)
+      inputsRef.current[nextIdx]?.focus()
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-3 my-3" onPaste={handlePaste}>
+      {[0, 1, 2, 3].map((idx) => (
+        <input
+          key={idx}
+          ref={(el) => (inputsRef.current[idx] = el)}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={1}
+          placeholder={placeholder}
+          value={value[idx] || ""}
+          onChange={(e) => handleDigitChange(idx, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(idx, e)}
+          className="w-13 h-14 text-center text-2xl font-bold border-2 border-[#d4d5d9] rounded-lg focus:border-[#ff3f6c] focus:outline-none transition-all text-[#282c3f] bg-white placeholder:text-[#d4d5d9]"
+        />
+      ))}
+    </div>
+  )
+}
 
 const RegistrationForm = () => {
   const [email, setEmail] = useState("")
@@ -20,529 +80,420 @@ const RegistrationForm = () => {
   const [password, setPassword] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
-  const [showOtpInput, setShowOtpInput] = useState(false)
+  const [otpSent, setOtpSent] = useState(false)
+  const [showOtpScreen, setShowOtpScreen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [countdown, setCountdown] = useState(0)
   const router = useRouter()
   const dispatch = useDispatch()
+  const otpInputRef = useRef(null)
 
+  // Countdown timer for Resend OTP
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768)
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
     }
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+  }, [countdown])
 
-  useEffect(() => {
-    const initFirebase = async () => {
-      const { initializeApp } = await import("firebase/app")
-      const { getAuth } = await import("firebase/auth")
-      const { addUserToFirestore } = await import("../../stores")
-      const auth = getAuth()
-      auth.languageCode = "en"
+  // Send OTP handler
+  const handleSendOtp = async (e) => {
+    if (e) e.preventDefault()
 
-      window.firebaseAuth = auth
-      window.addUserToFirestore = addUserToFirestore
+    if (!email || !email.includes("@")) {
+      toast.error("Please enter a valid email address first.")
+      return false
     }
 
-    if (typeof window !== "undefined") {
-      initFirebase()
-    }
-  }, [])
-
-  const sendOtp = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
+    setOtpLoading(true)
     try {
       const response = await fetch("/api/sendOtp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error(`Failed to send OTP: ${response.statusText}`)
+        throw new Error(data.error || data.details || "Failed to send OTP")
       }
 
-      const data = await response.json()
-      toast.success(data.message)
-      setShowOtpInput(true)
+      setOtpSent(true)
+      setCountdown(30)
+      toast.success(data.message || "OTP sent successfully to your email!")
+      
+      // Auto-focus the OTP placeholder input
+      setTimeout(() => {
+        otpInputRef.current?.focus()
+      }, 100)
+      return true
     } catch (err) {
       console.error("Error sending OTP:", err)
-      toast.error(err.message || "An unexpected error occurred.")
+      toast.error(err.message || "Failed to send OTP. Please check your credentials.")
+      return false
     } finally {
-      setLoading(false)
+      setOtpLoading(false)
     }
   }
 
-  const handleVerifyOtp = async (e) => {
+  // Handle transition to dedicated OTP screen
+  const handleProceedToOtpScreen = async (e) => {
     e.preventDefault()
-    if (typeof window === "undefined") return
+    if (!fullName || !email || !password || !phoneNumber) {
+      toast.error("Please fill in all registration fields.")
+      return
+    }
+
+    if (!otpSent) {
+      const sent = await handleSendOtp()
+      if (sent) setShowOtpScreen(true)
+    } else {
+      setShowOtpScreen(true)
+    }
+  }
+
+  // Registration & OTP Verification flow
+  const handleRegister = async (e) => {
+    e.preventDefault()
+
+    if (!fullName || !email || !password) {
+      toast.error("Please fill in all required fields.")
+      return
+    }
+
+    const cleanOtp = otp.trim()
+    if (!cleanOtp) {
+      toast.error("Please enter the 4-digit OTP sent to your email.")
+      otpInputRef.current?.focus()
+      return
+    }
+
     setLoading(true)
     try {
-      const { signInWithEmailLink, createUserWithEmailAndPassword, updateProfile } = await import("firebase/auth")
+      // 1. Verify OTP with backend
+      const verifyRes = await fetch("/api/verifyOtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: cleanOtp }),
+      })
 
-      const userCredential = await createUserWithEmailAndPassword(window.firebaseAuth, email, password)
-      const user = userCredential.user
-      await updateProfile(user, { displayName: fullName })
-      await window.addUserToFirestore(user.uid, email, fullName, phoneNumber)
+      const verifyData = await verifyRes.json()
 
-      dispatch(setUser(user))
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || "Invalid OTP code.")
+      }
+
+      // 2. Register user in Supabase
+      const data = await signUp(email, password, {
+        full_name: fullName,
+        phone_number: phoneNumber,
+      })
+
+      if (data?.user) {
+        dispatch(setUser(data.user))
+      }
+
+      toast.success("Account created successfully! Welcome to KnitNation.")
       router.push("/home")
     } catch (error) {
-      console.error("Error in registration process:", error)
-      toast.error(`Error in registration: ${error.message}`)
+      console.error("Error in registration:", error)
+      toast.error(error.message || "Registration failed. Please try again.")
     } finally {
       setLoading(false)
     }
-  }
-
-  const containerStyle = {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)",
-    padding: isMobile ? "20px" : "40px",
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  }
-
-  const wrapperStyle = {
-    display: "flex",
-    width: "100%",
-    maxWidth: "1200px",
-    borderRadius: "16px",
-    overflow: "hidden",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.08)",
-    backgroundColor: "#ffffff",
-    flexDirection: isMobile ? "column" : "row",
-  }
-
-  const imageWrapperStyle = {
-    flex: isMobile ? "0" : "1",
-    display: isMobile ? "none" : "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(135deg, #1a1a1a 0%, #fff 100%)",
-    padding: "60px 40px",
-    minHeight: isMobile ? "0" : "600px",
-  }
-
-  const logoStyle = {
-    maxWidth: "100%",
-    height: "auto",
-    maxHeight: "200px",
-    objectFit: "contain",
-  }
-
-  const formWrapperStyle = {
-    flex: isMobile ? "1" : "1",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: isMobile ? "40px 24px" : "60px 80px",
-    minHeight: isMobile ? "auto" : "600px",
-  }
-
-  const formInnerStyle = {
-    width: "100%",
-    maxWidth: "420px",
-  }
-
-  const titleStyle = {
-    fontSize: isMobile ? "28px" : "36px",
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: "12px",
-    letterSpacing: "-0.5px",
-    lineHeight: "1.2",
-  }
-
-  const subtitleStyle = {
-    fontSize: "14px",
-    color: "#666666",
-    marginBottom: "40px",
-    lineHeight: "1.6",
-  }
-
-  const formStyle = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  }
-
-  const formGroupStyle = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  }
-
-  const labelStyle = {
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#333333",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  }
-
-  const inputStyle = {
-    padding: "14px 16px",
-    fontSize: "15px",
-    border: "1px solid #e0e0e0",
-    borderRadius: "8px",
-    backgroundColor: "#fafafa",
-    color: "#1a1a1a",
-    transition: "all 0.3s ease",
-    fontFamily: "inherit",
-    outline: "none",
-    boxSizing: "border-box",
-  }
-
-  const buttonStyle = {
-    padding: "14px 24px",
-    fontSize: "15px",
-    fontWeight: "600",
-    backgroundColor: "#1a1a1a",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: loading ? "not-allowed" : "pointer",
-    transition: "all 0.3s ease",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    opacity: loading ? "0.7" : "1",
-    marginTop: "8px",
-    width: "100%",
-  }
-
-  const linkContainerStyle = {
-    display: "flex",
-    flexDirection: isMobile ? "column" : "row",
-    gap: isMobile ? "12px" : "16px",
-    marginTop: "32px",
-    paddingTop: "24px",
-    borderTop: "1px solid #e0e0e0",
-    alignItems: isMobile ? "stretch" : "center",
-    justifyContent: isMobile ? "flex-start" : "center",
-    textAlign: "center",
-  }
-
-  const linkStyle = {
-    fontSize: "14px",
-    color: "#1a1a1a",
-    textDecoration: "none",
-    fontWeight: "500",
-    transition: "all 0.3s ease",
-    borderBottom: "2px solid transparent",
-    paddingBottom: "2px",
-  }
-
-  const securityNoteStyle = {
-    marginTop: "32px",
-    paddingTop: "24px",
-    borderTop: "1px solid #e0e0e0",
-    fontSize: "12px",
-    color: "#999999",
-    textAlign: "center",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-  }
-
-  const shieldIconStyle = {
-    color: "#1a1a1a",
-  }
-
-  const otpContainerStyle = {
-    display: "flex",
-    justifyContent: "center",
-    marginBottom: "32px",
-    width: "100%",
-    overflowX: "auto",
-  }
-
-  const otpInputWrapperStyle = {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    minWidth: "fit-content",
-  }
-
-  const shieldCircleStyle = {
-    backgroundColor: "#f5f5f5",
-    borderRadius: "50%",
-    padding: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  }
-
-  const otpVerificationTitleStyle = {
-    fontSize: "24px",
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: "8px",
-    textAlign: "center",
-  }
-
-  const otpVerificationSubtitleStyle = {
-    fontSize: "14px",
-    color: "#666666",
-    textAlign: "center",
-    marginBottom: "32px",
-  }
-
-  const spinnerStyle = {
-    animation: "spin 1s linear infinite",
   }
 
   return (
-    <Layout>
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+    <div className="min-h-screen flex bg-white">
+      <Toaster toastOptions={{ duration: 4000 }} />
 
-      <div style={containerStyle}>
-        <Toaster toastOptions={{ duration: 4000 }} />
-
-        <div style={wrapperStyle}>
-          {/* Logo Section */}
-          <div style={imageWrapperStyle}>
-            <img src="/logo.png" alt="Logo" style={logoStyle} />
-          </div>
-
-          {/* Form Section */}
-          <div style={formWrapperStyle}>
-            <div style={formInnerStyle}>
-              <h1 style={titleStyle}>{showOtpInput ? "Verify Email" : "Create Account"}</h1>
-              <p style={subtitleStyle}>
-                {showOtpInput ? "Enter the verification code sent to your email" : "Sign up to start shopping with us"}
-              </p>
-
-              <form onSubmit={showOtpInput ? handleVerifyOtp : sendOtp} style={formStyle}>
-                {!showOtpInput ? (
-                  <>
-                    {/* Full Name Input */}
-                    <div style={formGroupStyle}>
-                      <label htmlFor="name" style={labelStyle}>
-                        Full Name
-                      </label>
-                      <input
-                        id="name"
-                        placeholder="John Doe"
-                        required
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        onFocus={(e) => (e.target.style.borderColor = "#1a1a1a")}
-                        onBlur={(e) => (e.target.style.borderColor = "#e0e0e0")}
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    {/* Email Input */}
-                    <div style={formGroupStyle}>
-                      <label htmlFor="email" style={labelStyle}>
-                        Email Address
-                      </label>
-                      <input
-                        id="email"
-                        placeholder="you@example.com"
-                        required
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onFocus={(e) => (e.target.style.borderColor = "#1a1a1a")}
-                        onBlur={(e) => (e.target.style.borderColor = "#e0e0e0")}
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    {/* Password Input */}
-                    <div style={formGroupStyle}>
-                      <label htmlFor="password" style={labelStyle}>
-                        Password
-                      </label>
-                      <input
-                        id="password"
-                        placeholder="••••••••"
-                        required
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onFocus={(e) => (e.target.style.borderColor = "#1a1a1a")}
-                        onBlur={(e) => (e.target.style.borderColor = "#e0e0e0")}
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    {/* Phone Number Input */}
-                    <div style={formGroupStyle}>
-                      <label htmlFor="phone" style={labelStyle}>
-                        Phone Number
-                      </label>
-                      <PhoneInput
-                        placeholder="Enter phone number"
-                        value={phoneNumber}
-                        onChange={setPhoneNumber}
-                        defaultCountry="IN"
-                        international
-                        required
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      style={buttonStyle}
-                      onMouseEnter={(e) => {
-                        if (!loading) {
-                          e.target.style.backgroundColor = "#333333"
-                          e.target.style.transform = "translateY(-2px)"
-                          e.target.style.boxShadow = "0 8px 20px rgba(26, 26, 26, 0.15)"
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = "#1a1a1a"
-                        e.target.style.transform = "translateY(0)"
-                        e.target.style.boxShadow = "none"
-                      }}
-                    >
-                      {loading && <CgSpinner size={18} style={spinnerStyle} />}
-                      <span>{loading ? "Sending..." : "Send OTP via Email"}</span>
-                    </button>
-
-                    <div style={linkContainerStyle}>
-                      <p style={{ fontSize: "14px", color: "#666666", margin: "0" }}>
-                        Already have an account?{" "}
-                        <Link
-                          href="/login"
-                          style={linkStyle}
-                          onMouseEnter={(e) => {
-                            e.target.style.color = "#666666"
-                            e.target.style.borderBottomColor = "#1a1a1a"
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.color = "#1a1a1a"
-                            e.target.style.borderBottomColor = "transparent"
-                          }}
-                        >
-                          Sign in
-                        </Link>
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* OTP Verification Section */}
-                    <div style={otpContainerStyle}>
-                      <div style={shieldCircleStyle}>
-                        <BsFillShieldLockFill size={32} style={shieldIconStyle} />
-                      </div>
-                    </div>
-
-                    <h2 style={otpVerificationTitleStyle}>Email Verification</h2>
-                    <p style={otpVerificationSubtitleStyle}>We've sent a 6-digit code to your email</p>
-
-                    {/* OTP Input */}
-                    <div style={otpContainerStyle}>
-                      <div style={otpInputWrapperStyle}>
-                        <OtpInput
-                          value={otp}
-                          onChange={setOtp}
-                          numInputs={6}
-                          separator={<span style={{ margin: "0 4px" }}>-</span>}
-                          inputStyle={{
-                            width: "48px",
-                            height: "48px",
-                            margin: "0 4px",
-                            fontSize: "24px",
-                            borderRadius: "8px",
-                            border: "2px solid #e0e0e0",
-                            backgroundColor: "#fafafa",
-                            color: "#1a1a1a",
-                            fontWeight: "600",
-                            transition: "all 0.3s ease",
-                          }}
-                          focusStyle={{
-                            borderColor: "#1a1a1a",
-                            backgroundColor: "#ffffff",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      style={buttonStyle}
-                      onMouseEnter={(e) => {
-                        if (!loading) {
-                          e.target.style.backgroundColor = "#333333"
-                          e.target.style.transform = "translateY(-2px)"
-                          e.target.style.boxShadow = "0 8px 20px rgba(26, 26, 26, 0.15)"
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = "#1a1a1a"
-                        e.target.style.transform = "translateY(0)"
-                        e.target.style.boxShadow = "none"
-                      }}
-                    >
-                      {loading && <CgSpinner size={18} style={spinnerStyle} />}
-                      <span>{loading ? "Verifying..." : "Verify Email"}</span>
-                    </button>
-
-                    {/* Resend OTP Link */}
-                    <p style={{ textAlign: "center", color: "#666666", fontSize: "14px", marginTop: "24px" }}>
-                      Didn't receive the code?{" "}
-                      <button
-                        type="button"
-                        onClick={sendOtp}
-                        style={{
-                          ...linkStyle,
-                          background: "none",
-                          padding: "0",
-                          cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.color = "#666666"
-                          e.target.style.borderBottomColor = "#1a1a1a"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.color = "#1a1a1a"
-                          e.target.style.borderBottomColor = "transparent"
-                        }}
-                      >
-                        Resend OTP
-                      </button>
-                    </p>
-                  </>
-                )}
-              </form>
-
-              {/* Security Note */}
-              <div style={securityNoteStyle}>
-                <BsFillShieldLockFill size={14} style={shieldIconStyle} />
-                <span>Your data is secure and encrypted</span>
-              </div>
+      {/* ============ Brand panel (desktop only) ============ */}
+      <div className="hidden md:flex auth-brand-panel w-1/2 flex-col justify-between p-12">
+        <div className="relative z-10">
+          <img src="/logo.png" alt="KnitNation" className="h-10 w-auto object-contain brightness-0 invert" />
+        </div>
+        <div className="relative z-10">
+          <h2 className="text-white text-3xl font-bold leading-tight max-w-[380px]">
+            Looks like you&apos;re new here!
+          </h2>
+          <p className="text-white/90 text-sm mt-4 max-w-[340px] leading-relaxed">
+            Sign up with your verified email to explore premium apparel and curated fashion.
+          </p>
+          <div className="flex items-center gap-6 mt-8">
+            <div className="flex items-center gap-2 text-white">
+              <ShoppingBag className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wide">Easy Bag</span>
+            </div>
+            <div className="flex items-center gap-2 text-white">
+              <Heart className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wide">Wishlist</span>
+            </div>
+            <div className="flex items-center gap-2 text-white">
+              <Zap className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wide">Instant Checkout</span>
             </div>
           </div>
         </div>
+        <div className="relative z-10 text-white/70 text-xs">
+          © {new Date().getFullYear()} www.knitnation.com • Powered by Supabase & Razorpay
+        </div>
       </div>
-    </Layout>
+
+      {/* ============ Form panel ============ */}
+      <div className="flex-1 flex items-center justify-center px-5 py-10 md:px-16 overflow-y-auto">
+        <div className="w-full max-w-[430px]">
+          <div className="md:hidden flex justify-center mb-6">
+            <img src="/logo.png" alt="KnitNation" className="h-9 w-auto object-contain" />
+          </div>
+
+          {!showOtpScreen ? (
+            /* ========================================================
+               SCREEN 1: All-In-One Form with Explicit OTP Placeholder
+               ======================================================== */
+            <>
+              <h1 className="auth-title">Create Account</h1>
+              <div className="auth-title-bar" />
+              <p className="auth-subtitle mb-6">
+                Sign up with your email to start shopping with KnitNation
+              </p>
+
+              <form onSubmit={handleRegister} className="flex flex-col gap-4">
+                {/* Full Name */}
+                <div className="flex flex-col">
+                  <label htmlFor="name" className="auth-label">
+                    Full Name
+                  </label>
+                  <input
+                    id="name"
+                    placeholder="Enter your full name (e.g. John Doe)"
+                    required
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="myntra-input"
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div className="flex flex-col">
+                  <label htmlFor="email" className="auth-label">
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    placeholder="you@example.com"
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (otpSent) setOtpSent(false)
+                    }}
+                    className="myntra-input"
+                  />
+                </div>
+
+                {/* OTP Section with Explicit Placeholder & Inline Action */}
+                <div className="flex flex-col bg-[#fdf8fa] p-3.5 rounded-lg border border-[#f5d0dc]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="otp" className="auth-label !mb-0 flex items-center gap-1.5 text-[#ff3f6c]">
+                      <BsFillShieldLockFill size={14} />
+                      Email Verification OTP
+                    </label>
+                    {otpSent && (
+                      <span className="text-[11px] font-semibold text-[#1a9c3e] flex items-center gap-1">
+                        <CheckCircle2 size={12} /> Code Sent
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      id="otp"
+                      ref={otpInputRef}
+                      placeholder="Enter 4-digit OTP"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      className="myntra-input font-bold tracking-widest text-center text-lg !bg-white border-[#e0bfcb] focus:border-[#ff3f6c]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={otpLoading || countdown > 0}
+                      className="px-3.5 py-2 text-xs font-bold whitespace-nowrap uppercase tracking-wider rounded border border-[#ff3f6c] text-[#ff3f6c] bg-white hover:bg-[#fff0f4] disabled:opacity-50 transition-colors flex items-center justify-center min-w-[100px]"
+                    >
+                      {otpLoading ? (
+                        <CgSpinner size={16} className="auth-spin" />
+                      ) : countdown > 0 ? (
+                        `Wait ${countdown}s`
+                      ) : otpSent ? (
+                        "Resend"
+                      ) : (
+                        "Send OTP"
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-[#5a5d68] mt-1.5">
+                    {otpSent
+                      ? `We sent a 4-digit code to ${email}. Check your spam if not in inbox.`
+                      : 'Click "Send OTP" to receive a 4-digit verification code in your email.'}
+                  </p>
+                </div>
+
+                {/* Password */}
+                <div className="flex flex-col">
+                  <label htmlFor="password" className="auth-label">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    placeholder="Enter password (min 6 characters)"
+                    required
+                    minLength={6}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="myntra-input"
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div className="flex flex-col">
+                  <label htmlFor="phone" className="auth-label">
+                    Phone Number
+                  </label>
+                  <div className="auth-phone-input">
+                    <PhoneInput
+                      placeholder="Enter phone number"
+                      value={phoneNumber}
+                      onChange={setPhoneNumber}
+                      defaultCountry="IN"
+                      international
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="myntra-btn w-full py-3.5 mt-2 text-sm shadow-md hover:shadow-lg"
+                >
+                  {loading && <CgSpinner size={18} className="auth-spin mr-2" />}
+                  <span>{loading ? "Creating Account..." : "Create Account"}</span>
+                </button>
+
+                {/* Optional dedicated OTP screen trigger */}
+                {otpSent && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOtpScreen(true)}
+                    className="text-center text-xs text-[#ff3f6c] font-semibold hover:underline mt-1"
+                  >
+                    Enter OTP in full verification view →
+                  </button>
+                )}
+
+                <div className="flex items-center justify-center gap-1.5 mt-2 pt-4 border-t border-[#eaeaec] text-sm text-[#5a5d68]">
+                  <span>Already have an account?</span>
+                  <Link href="/login" className="auth-link">
+                    Sign in
+                  </Link>
+                </div>
+              </form>
+            </>
+          ) : (
+            /* ========================================================
+               SCREEN 2: Dedicated OTP Verification View
+               ======================================================== */
+            <>
+              <button
+                type="button"
+                onClick={() => setShowOtpScreen(false)}
+                className="inline-flex items-center gap-1.5 text-xs text-[#5a5d68] hover:text-[#282c3f] mb-4 font-semibold"
+              >
+                <ArrowLeft size={14} /> Back to details
+              </button>
+
+              <div className="flex justify-center mb-3">
+                <div className="w-16 h-16 rounded-full bg-[#fff0f4] flex items-center justify-center">
+                  <BsFillShieldLockFill size={28} className="text-[#ff3f6c]" />
+                </div>
+              </div>
+
+              <h1 className="text-xl font-bold text-[#282c3f] text-center">
+                Email Verification
+              </h1>
+              <p className="text-sm text-[#5a5d68] text-center mt-1 mb-6">
+                Enter the 4-digit code sent to <strong className="text-[#282c3f]">{email}</strong>
+              </p>
+
+              <form onSubmit={handleRegister} className="flex flex-col gap-4">
+                {/* 4-digit segmented boxes */}
+                <SegmentedOtpInput
+                  value={otp}
+                  onChange={setOtp}
+                  placeholder="•"
+                />
+
+                {/* Also explicit single input with placeholder as fallback */}
+                <div className="flex flex-col mt-2">
+                  <label htmlFor="otp-alt" className="auth-label text-center text-xs text-[#94969f]">
+                    Or enter directly:
+                  </label>
+                  <input
+                    id="otp-alt"
+                    placeholder="Enter 4-digit OTP"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    className="myntra-input font-bold tracking-widest text-center text-lg mx-auto max-w-[200px]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.length < 4}
+                  className="myntra-btn w-full py-3.5 mt-4 text-sm"
+                >
+                  {loading && <CgSpinner size={18} className="auth-spin mr-2" />}
+                  <span>{loading ? "Verifying..." : "Verify & Complete Registration"}</span>
+                </button>
+
+                <div className="text-center text-sm text-[#5a5d68] mt-3">
+                  Didn&apos;t receive the code?{" "}
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpLoading || countdown > 0}
+                    className="auth-link disabled:opacity-50"
+                  >
+                    {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {/* Security badge */}
+          <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-[#eaeaec] text-xs text-[#94969f]">
+            <BsFillShieldLockFill size={14} className="text-[#5a5d68]" />
+            <span>256-bit SSL encrypted • Instant verification</span>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
