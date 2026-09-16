@@ -29,7 +29,20 @@ const LoginForm = () => {
       router.push("/home")
     } catch (error) {
       dispatch(setError(error.message))
-      toast.error(`Login failed: ${error.message}`)
+      // Supabase blocks login if email confirmation is required in dashboard settings
+      if (
+        error.message?.toLowerCase().includes("email not confirmed") ||
+        error.message?.toLowerCase().includes("email_not_confirmed")
+      ) {
+        toast.error(
+          "Your email is not confirmed. Go to Supabase Dashboard → Authentication → Providers → Email and disable \"Confirm email\".",
+          { duration: 8000 }
+        )
+      } else if (error.message?.toLowerCase().includes("invalid login credentials")) {
+        toast.error("Invalid email or password. Please check and try again.")
+      } else {
+        toast.error(`Login failed: ${error.message}`)
+      }
     } finally {
       setLoading(false)
     }

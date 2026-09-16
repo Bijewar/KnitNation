@@ -19,26 +19,29 @@ import { signUp } from "../../supabase"
 const SegmentedOtpInput = ({ value = "", onChange, placeholder = "•" }) => {
   const inputsRef = useRef([])
 
+  // Build a clean 4-element array of single digits (never spaces)
+  const digits = Array.from({ length: 4 }, (_, i) => {
+    const ch = (value || "")[i]
+    return ch && /\d/.test(ch) ? ch : ""
+  })
+
   const handleDigitChange = (index, val) => {
     const clean = val.replace(/\D/g, "")
+    const newDigits = [...digits]
     if (!clean) {
-      const arr = (value || "").split("")
-      arr[index] = ""
-      onChange(arr.join("").trim())
-      return
+      newDigits[index] = ""
+    } else {
+      newDigits[index] = clean[clean.length - 1]
+      if (index < 3) {
+        inputsRef.current[index + 1]?.focus()
+      }
     }
-    const lastChar = clean[clean.length - 1]
-    const arr = (value || "").padEnd(4, " ").split("")
-    arr[index] = lastChar
-    const updated = arr.join("").trim()
-    onChange(updated)
-    if (index < 3 && lastChar) {
-      inputsRef.current[index + 1]?.focus()
-    }
+    // Join only actual digit slots — no spaces
+    onChange(newDigits.join(""))
   }
 
   const handleKeyDown = (index, e) => {
-    if (e.key === "Backspace" && (!value[index] || value[index] === " ") && index > 0) {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
       inputsRef.current[index - 1]?.focus()
     }
   }
@@ -64,7 +67,7 @@ const SegmentedOtpInput = ({ value = "", onChange, placeholder = "•" }) => {
           pattern="[0-9]*"
           maxLength={1}
           placeholder={placeholder}
-          value={value[idx] || ""}
+          value={digits[idx]}
           onChange={(e) => handleDigitChange(idx, e.target.value)}
           onKeyDown={(e) => handleKeyDown(idx, e)}
           className="w-13 h-14 text-center text-2xl font-bold border-2 border-[#d4d5d9] rounded-lg focus:border-[#ff3f6c] focus:outline-none transition-all text-[#282c3f] bg-white placeholder:text-[#d4d5d9]"

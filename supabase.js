@@ -27,6 +27,7 @@ export const signUp = async (email, password, metadata = {}) => {
     password,
     options: {
       data: metadata,
+      emailRedirectTo: undefined,  // We handle OTP ourselves, skip Supabase email flow
     },
   });
   if (error) throw error;
