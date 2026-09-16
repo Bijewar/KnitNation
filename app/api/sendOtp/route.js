@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { createClient } from "@supabase/supabase-js";
 
-// Global store for OTPs so it persists across Next.js route handlers
-global._otpStore = global._otpStore || new Map();
-export const otpStore = global._otpStore;
+// Use service-role or anon key — anon is fine since RLS is disabled on otp_verifications
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 // ✅ Generate a random 4-digit OTP
 const generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -20,12 +23,23 @@ export async function POST(request) {
     }
 
     const otp = generateOtp();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    otpStore.set(email, {
-      otp,
-      timestamp: Date.now(),
-      attempts: 0,
-    });
+    // Delete any existing OTP for this email (so only one active at a time)
+    await supabase.from("otp_verifications").delete().eq("email", email);
+
+    // Insert new OTP into Supabase
+    const { error: insertError } = await supabase
+      .from("otp_verifications")
+      .insert({ email, otp, expires_at: expiresAt });
+
+    if (insertError) {
+      console.error("Supabase insert error:", insertError);
+      return NextResponse.json(
+        { error: "Failed to store OTP", details: insertError.message },
+        { status: 500 }
+      );
+    }
 
     const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
     const smtpPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS)?.trim();
